@@ -142,6 +142,7 @@ export default function StoriesArchive() {
                 <SwipeableImage
                   uri={images[selectedDate]!}
                   date={selectedDate}
+                  onPress={(uri) => openImageModal(uri)}
                   onDelete={(date) => {
                     const updated = { ...images };
                     delete updated[date];

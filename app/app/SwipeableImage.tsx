@@ -7,9 +7,15 @@ type Props = {
   uri: string;
   date: string;
   onDelete: (date: string) => void;
+  onPress?: (uri: string) => void; // 👈 NEW
 };
 
-export default function SwipeableImage({ uri, date, onDelete }: Props) {
+export default function SwipeableImage({
+  uri,
+  date,
+  onDelete,
+  onPress,
+}: Props) {
   const swipeableRef = useRef<Swipeable>(null);
 
   const renderLeftActions = () => (
@@ -74,7 +80,7 @@ export default function SwipeableImage({ uri, date, onDelete }: Props) {
       onSwipeableLeftOpen={confirmDelete}
       onSwipeableRightOpen={confirmSave}
     >
-      <Pressable>
+      <Pressable onPress={() => onPress?.(uri)}>
         <Image source={{ uri }} style={styles.image} resizeMode="contain" />
       </Pressable>
     </Swipeable>
