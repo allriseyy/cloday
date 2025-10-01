@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React from "react";
 import { View, Text, Image, Pressable, StyleSheet, Alert } from "react-native";
 import { Swipeable } from "react-native-gesture-handler";
 import * as MediaLibrary from "expo-media-library";
@@ -16,17 +16,34 @@ export default function SwipeableImage({
   onDelete,
   onPress,
 }: Props) {
-  const swipeableRef = useRef<Swipeable>(null);
-  const [imgHeight, setImgHeight] = React.useState(0);
+  const swipeableRef = React.useRef<Swipeable>(null);
+
+  // Height we measured from the first render
+  const [imgHeight, setImgHeight] = React.useState<number | null>(null);
+
+  // Make the image narrower but keep the same height
+  const TARGET_WIDTH = 180; // 👈 adjust as you like
 
   const renderLeftActions = () => (
-    <View style={[styles.actionFull, styles.deleteBg, { height: imgHeight }]}>
+    <View
+      style={[
+        styles.actionPanel,
+        styles.deleteBg,
+        imgHeight ? { width: TARGET_WIDTH, height: imgHeight } : null,
+      ]}
+    >
       <Text style={styles.actionText}>Delete</Text>
     </View>
   );
 
   const renderRightActions = () => (
-    <View style={[styles.actionFull, styles.saveBg, { height: imgHeight }]}>
+    <View
+      style={[
+        styles.actionPanel,
+        styles.saveBg,
+        imgHeight ? { width: TARGET_WIDTH, height: imgHeight } : null,
+      ]}
+    >
       <Text style={styles.actionText}>Save</Text>
     </View>
   );
@@ -87,9 +104,20 @@ export default function SwipeableImage({
       <Pressable onPress={() => onPress?.(uri)}>
         <Image
           source={{ uri }}
-          style={styles.image}
-          resizeMode="contain"
-          onLayout={(e) => setImgHeight(e.nativeEvent.layout.height)} // 👈 track height
+          // First render: measure height using a temporary square
+          // After we have height: lock height, shrink width to TARGET_WIDTH
+          style={
+            imgHeight
+              ? [styles.imageBase, { width: TARGET_WIDTH, height: imgHeight }]
+              : styles.imageMeasureOnce
+          }
+          resizeMode="cover" // fill fixed height; switch to "contain" to avoid side crop
+          onLayout={(e) => {
+            if (imgHeight === null) {
+              const measured = e.nativeEvent.layout.height;
+              if (measured > 0) setImgHeight(measured);
+            }
+          }}
         />
       </Pressable>
     </Swipeable>
@@ -105,17 +133,29 @@ const styles = StyleSheet.create({
     alignSelf: "center",
     marginVertical: 12,
   },
-  image: {
-    width: 250, // only constrain width
-    aspectRatio: 1, // 👈 optional: replace with actual aspect ratio if you know it
+
+  // Initial pass: render something predictable so we can measure height once
+  imageMeasureOnce: {
+    width: 250, // temporary width just to get a height back
+    aspectRatio: 1, // temporary square to produce a stable measurement
+    borderRadius: RADIUS,
+    overflow: "hidden",
   },
-  actionFull: {
+
+  // After measurement: keep the same height but use a smaller width
+  imageBase: {
+    borderRadius: RADIUS,
+    overflow: "hidden",
+  },
+
+  // Action panels behind the image
+  actionPanel: {
     justifyContent: "center",
     alignItems: "center",
-    flex: 1,
   },
   deleteBg: { backgroundColor: "red" },
   saveBg: { backgroundColor: "green" },
+
   actionText: {
     color: "#fff",
     fontWeight: "bold",
