@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   View,
   Text,
@@ -15,11 +15,19 @@ import { Ionicons } from "@expo/vector-icons";
 import ProfilePage from "./ProfilePage"; // if you're using the split file
 import { LinearGradient } from "expo-linear-gradient";
 import SwipeableImage from "./SwipeableImage";
+import { TapGestureHandler } from "react-native-gesture-handler";
 
 type ImageMap = Record<string, string>;
 
+const toISO = (d: Date) => d.toISOString().split("T")[0];
+const addDays = (iso: string, delta: number) => {
+  const d = new Date(iso);
+  d.setDate(d.getDate() + delta);
+  return toISO(d);
+};
+
 export default function StoriesArchive() {
-  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string>('null');
   const [images, setImages] = useState<ImageMap>({});
   const [currentScreen, setCurrentScreen] = useState<"home" | "profile">(
     "home"
@@ -87,6 +95,14 @@ export default function StoriesArchive() {
     setModalUri(null);
   };
 
+  const doubleTapRef = useRef<TapGestureHandler>(null);
+  const singleTapRef = useRef<TapGestureHandler>(null);
+  const [previewWidth, setPreviewWidth] = useState(0);
+
+  const goToday = () => setSelectedDate(toISO(new Date()));
+  const goPrevDay = () => setSelectedDate(addDays(selectedDate, -1));
+  const goNextDay = () => setSelectedDate(addDays(selectedDate, 1));
+
   return (
     <View style={styles.container}>
       {currentScreen === "home" ? (
@@ -137,23 +153,52 @@ export default function StoriesArchive() {
           </LinearGradient>
 
           {selectedDate && (
-            <View style={styles.preview}>
-              {images[selectedDate] ? (
-                <SwipeableImage
-                  uri={images[selectedDate]!}
-                  date={selectedDate}
-                  onPress={(uri) => openImageModal(uri)}
-                  onDelete={(date) => {
-                    const updated = { ...images };
-                    delete updated[date];
-                    setImages(updated);
-                    AsyncStorage.setItem("dateImages", JSON.stringify(updated));
-                  }}
-                />
-              ) : (
-                <Text style={styles.nothing}>Nothing here !</Text>
-              )}
-            </View>
+            <TapGestureHandler
+              ref={doubleTapRef}
+              numberOfTaps={2}
+              onActivated={goToday}
+            >
+              <TapGestureHandler
+                ref={singleTapRef}
+                waitFor={doubleTapRef} // ensure double-tap wins
+                numberOfTaps={1}
+                onActivated={(e) => {
+                  const x = e.nativeEvent.x; // tap x relative to the preview
+                  if (previewWidth === 0) return;
+                  if (x < previewWidth / 2) {
+                    goPrevDay();
+                  } else {
+                    goNextDay();
+                  }
+                }}
+              >
+                <View
+                  style={styles.preview}
+                  onLayout={(ev) =>
+                    setPreviewWidth(ev.nativeEvent.layout.width)
+                  }
+                >
+                  {images[selectedDate] ? (
+                    <SwipeableImage
+                      uri={images[selectedDate]!}
+                      date={selectedDate}
+                      onPress={(uri) => openImageModal(uri)}
+                      onDelete={(date) => {
+                        const updated = { ...images };
+                        delete updated[date];
+                        setImages(updated);
+                        AsyncStorage.setItem(
+                          "dateImages",
+                          JSON.stringify(updated)
+                        );
+                      }}
+                    />
+                  ) : (
+                    <Text style={styles.nothing}>Nothing here !</Text>
+                  )}
+                </View>
+              </TapGestureHandler>
+            </TapGestureHandler>
           )}
         </>
       ) : (
@@ -232,7 +277,13 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
   },
   header: { fontSize: 22, fontWeight: "600", marginVertical: 10 },
-  preview: { alignItems: "center" },
+  preview: {
+    alignItems: "center",
+    borderRadius: 16, // 👈 round the corners
+    overflow: "hidden", // 👈 clip children to rounded corners
+    backgroundColor: "#e4e4e471", // optional, makes the shape visible when empty
+    padding: 8, // optional, keeps text/images from touching edges
+  },
   image: {
     width: "100%", // take full width of container
     height: undefined, // let aspect ratio decide height
@@ -310,7 +361,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   nothing: {
-    marginTop: 40,
+    marginTop: 80,
+    marginBottom: 80,
+    alignItems: "center",
+    height: 100,
     fontSize: 20,
   },
   calendarWrapper: {

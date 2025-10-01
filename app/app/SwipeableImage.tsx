@@ -10,7 +10,12 @@ type Props = {
   onPress?: (uri: string) => void;
 };
 
-export default function SwipeableImage({ uri, date, onDelete, onPress }: Props) {
+export default function SwipeableImage({
+  uri,
+  date,
+  onDelete,
+  onPress,
+}: Props) {
   const swipeableRef = useRef<Swipeable>(null);
   const [imgHeight, setImgHeight] = React.useState(0);
 
@@ -27,29 +32,45 @@ export default function SwipeableImage({ uri, date, onDelete, onPress }: Props) 
   );
 
   const confirmDelete = () => {
-    Alert.alert("Delete Image", "Are you sure you want to delete this picture?", [
-      { text: "Cancel", style: "cancel", onPress: () => swipeableRef.current?.close() },
-      { text: "Delete", style: "destructive", onPress: () => onDelete(date) },
-    ]);
+    Alert.alert(
+      "Delete Image",
+      "Are you sure you want to delete this picture?",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+          onPress: () => swipeableRef.current?.close(),
+        },
+        { text: "Delete", style: "destructive", onPress: () => onDelete(date) },
+      ]
+    );
   };
 
   const confirmSave = () => {
-    Alert.alert("Save Image", "Do you want to save this picture to your gallery?", [
-      { text: "Cancel", style: "cancel", onPress: () => swipeableRef.current?.close() },
-      {
-        text: "Save",
-        onPress: async () => {
-          const { status } = await MediaLibrary.requestPermissionsAsync();
-          if (status === "granted") {
-            await MediaLibrary.saveToLibraryAsync(uri);
-            Alert.alert("Saved", "Image saved to your gallery 🎉");
-          } else {
-            Alert.alert("Permission denied", "Enable access to save images.");
-          }
-          swipeableRef.current?.close();
+    Alert.alert(
+      "Save Image",
+      "Do you want to save this picture to your gallery?",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+          onPress: () => swipeableRef.current?.close(),
         },
-      },
-    ]);
+        {
+          text: "Save",
+          onPress: async () => {
+            const { status } = await MediaLibrary.requestPermissionsAsync();
+            if (status === "granted") {
+              await MediaLibrary.saveToLibraryAsync(uri);
+              Alert.alert("Saved", "Image saved to your gallery 🎉");
+            } else {
+              Alert.alert("Permission denied", "Enable access to save images.");
+            }
+            swipeableRef.current?.close();
+          },
+        },
+      ]
+    );
   };
 
   return (
@@ -85,10 +106,8 @@ const styles = StyleSheet.create({
     marginVertical: 12,
   },
   image: {
-    width: 250,      // only constrain width
-    height: undefined,
-    aspectRatio: 1,  // 👈 optional: replace with actual aspect ratio if you know it
-    borderRadius: RADIUS,
+    width: 250, // only constrain width
+    aspectRatio: 1, // 👈 optional: replace with actual aspect ratio if you know it
   },
   actionFull: {
     justifyContent: "center",
@@ -100,6 +119,6 @@ const styles = StyleSheet.create({
   actionText: {
     color: "#fff",
     fontWeight: "bold",
-    fontSize: 16,
+    fontSize: 40,
   },
 });
