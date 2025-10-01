@@ -29,7 +29,7 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <Stack>
         <Stack.Screen
-          name="drobe"
+          name="index"
           options={{
             header: () => <MyHeader />, // custom header replaces default
           }}
