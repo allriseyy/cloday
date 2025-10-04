@@ -23,7 +23,7 @@ export default function UserManual({ onBack }: Props) {
       </View>
 
       <ScrollView contentContainerStyle={styles.pageWrap}>
-        <Text style={styles.pageTitle}>Welcome to Drobe !</Text>
+        <Text style={styles.pageTitle}>Welcome to Cloday !</Text>
         <Text style={styles.pageText}>
           Write your manual here. This is a placeholder screen you can fill with
           sections, tips, and screenshots.

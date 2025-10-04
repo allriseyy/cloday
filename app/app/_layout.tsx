@@ -19,7 +19,7 @@ function MyHeader() {
         borderBottomColor: "#ddd",
       }}
     >
-      <Text style={{ fontSize: 20 }}>Drobe</Text>
+      <Text style={{ fontSize: 20 }}>Cloday</Text>
     </View>
   );
 }
