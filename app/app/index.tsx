@@ -1,3 +1,4 @@
+// index.tsx
 import React, { useEffect, useState, useRef } from "react";
 import {
   View,
@@ -12,12 +13,15 @@ import { Calendar } from "react-native-calendars";
 import * as ImagePicker from "expo-image-picker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
-import ProfilePage from "./ProfilePage"; // if you're using the split file
+import ProfilePage from "./ProfilePage";
 import { LinearGradient } from "expo-linear-gradient";
 import SwipeableImage from "./SwipeableImage";
 import { TapGestureHandler } from "react-native-gesture-handler";
+import Settings from "./Settings";
+import UserManual from "./UserManual";
 
 type ImageMap = Record<string, string>;
+type Screen = "home" | "profile" | "manual" | "settings";
 
 const toISO = (d: Date) => d.toISOString().split("T")[0];
 const addDays = (iso: string, delta: number) => {
@@ -27,18 +31,18 @@ const addDays = (iso: string, delta: number) => {
 };
 
 export default function StoriesArchive() {
-  const [selectedDate, setSelectedDate] = useState<string>('null');
+  const [selectedDate, setSelectedDate] = useState<string>("null");
   const [images, setImages] = useState<ImageMap>({});
-  const [currentScreen, setCurrentScreen] = useState<"home" | "profile">(
-    "home"
-  );
+  const [currentScreen, setCurrentScreen] = useState<Screen>("home");
 
-  // NEW: modal state
+  // Image modal
   const [modalVisible, setModalVisible] = useState(false);
   const [modalUri, setModalUri] = useState<string | null>(null);
 
+  // Theming (background colour)
+  const [bgColor, setBgColor] = useState<string>("#fff");
+
   useEffect(() => {
-    // Get today in YYYY-MM-DD format
     const today = new Date().toISOString().split("T")[0];
     setSelectedDate(today);
   }, []);
@@ -47,6 +51,16 @@ export default function StoriesArchive() {
     (async () => {
       const raw = await AsyncStorage.getItem("dateImages");
       if (raw) setImages(JSON.parse(raw));
+
+      // ensure install date saved once
+      const existingInstall = await AsyncStorage.getItem("installDate");
+      if (!existingInstall) {
+        await AsyncStorage.setItem("installDate", new Date().toISOString());
+      }
+
+      // load bg color
+      const storedBg = await AsyncStorage.getItem("bgColor");
+      if (storedBg) setBgColor(storedBg);
     })();
   }, []);
 
@@ -59,21 +73,12 @@ export default function StoriesArchive() {
       Alert.alert("Pick a date first");
       return;
     }
-
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert(
-        "Permission required",
-        "Camera access is needed to take pictures."
-      );
+      Alert.alert("Permission required", "Camera access is needed.");
       return;
     }
-
-    const result = await ImagePicker.launchCameraAsync({
-      quality: 1, // capture at full quality, we'll compress ourselves
-      // Do NOT include allowsEditing or aspect to avoid cropping
-    });
-
+    const result = await ImagePicker.launchCameraAsync({ quality: 1 });
     if (!result.canceled) {
       const originalUri = result.assets?.[0]?.uri;
       if (originalUri && selectedDate) {
@@ -84,12 +89,11 @@ export default function StoriesArchive() {
     }
   };
 
-  // NEW: open/close handlers
+  // Modal handlers
   const openImageModal = (uri: string) => {
     setModalUri(uri);
     setModalVisible(true);
   };
-
   const closeImageModal = () => {
     setModalVisible(false);
     setModalUri(null);
@@ -104,8 +108,8 @@ export default function StoriesArchive() {
   const goNextDay = () => setSelectedDate(addDays(selectedDate, 1));
 
   return (
-    <View style={styles.container}>
-      {currentScreen === "home" ? (
+    <View style={[styles.container, { backgroundColor: bgColor }]}>
+      {currentScreen === "home" && (
         <>
           <LinearGradient
             colors={["#f5f7ff", "#e6ecff"]}
@@ -118,7 +122,6 @@ export default function StoriesArchive() {
               onDayPress={(d) => setSelectedDate(d.dateString)}
               enableSwipeMonths={true}
               markedDates={{
-                // mark all dates with images (red)
                 ...Object.fromEntries(
                   Object.keys(images).map((date) => [
                     date,
@@ -129,8 +132,6 @@ export default function StoriesArchive() {
                     },
                   ])
                 ),
-
-                // 👇 put selectedDate last so it overwrites
                 ...(selectedDate
                   ? {
                       [selectedDate]: {
@@ -160,10 +161,10 @@ export default function StoriesArchive() {
             >
               <TapGestureHandler
                 ref={singleTapRef}
-                waitFor={doubleTapRef} // ensure double-tap wins
+                waitFor={doubleTapRef}
                 numberOfTaps={1}
                 onActivated={(e) => {
-                  const x = e.nativeEvent.x; // tap x relative to the preview
+                  const x = e.nativeEvent.x;
                   if (previewWidth === 0) return;
                   if (x < previewWidth / 2) {
                     goPrevDay();
@@ -201,8 +202,28 @@ export default function StoriesArchive() {
             </TapGestureHandler>
           )}
         </>
-      ) : (
-        <ProfilePage />
+      )}
+
+      {currentScreen === "profile" && (
+        <ProfilePage
+          onOpenManual={() => setCurrentScreen("manual")}
+          onOpenSettings={() => setCurrentScreen("settings")}
+        />
+      )}
+
+      {currentScreen === "manual" && (
+        <UserManual onBack={() => setCurrentScreen("profile")} />
+      )}
+
+      {currentScreen === "settings" && (
+        <Settings
+          bgColor={bgColor}
+          setBgColor={async (c) => {
+            setBgColor(c);
+            await AsyncStorage.setItem("bgColor", c);
+          }}
+          onBack={() => setCurrentScreen("profile")}
+        />
       )}
 
       {/* Bottom bar */}
@@ -239,7 +260,7 @@ export default function StoriesArchive() {
         </Pressable>
       )}
 
-      {/* ===== Image Modal (drop-in) ===== */}
+      {/* Image Modal */}
       <Modal
         visible={modalVisible}
         animationType="fade"
@@ -274,24 +295,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingTop: 10,
     paddingBottom: BAR_HEIGHT + 16,
-    backgroundColor: "#fff",
   },
   header: { fontSize: 22, fontWeight: "600", marginVertical: 10 },
   preview: {
     alignItems: "center",
-    borderRadius: 16, // 👈 round the corners
-    overflow: "hidden", // 👈 clip children to rounded corners
-    backgroundColor: "#e4e4e471", // optional, makes the shape visible when empty
-    padding: 8, // optional, keeps text/images from touching edges
+    borderRadius: 16,
+    overflow: "hidden",
+    backgroundColor: "#e4e4e471",
+    padding: 8,
   },
   image: {
-    width: "100%", // take full width of container
-    height: undefined, // let aspect ratio decide height
-    aspectRatio: 3 / 4, // fallback ratio if RN can't infer it
-    maxHeight: 250, // keep it smaller
+    width: "100%",
+    height: undefined,
+    aspectRatio: 3 / 4,
+    maxHeight: 250,
     borderRadius: 12,
     marginTop: 12,
-    alignSelf: "center", // center in parent
+    alignSelf: "center",
   },
 
   // Bottom bar
@@ -339,7 +359,7 @@ const styles = StyleSheet.create({
   // Modal styles
   modalContainer: {
     flex: 1,
-    backgroundColor: "#000", // solid black to avoid transparent layering glitches
+    backgroundColor: "#000",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -351,9 +371,8 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   modalImage: {
-    flex: 1, // let the image take available space
-    alignSelf: "stretch", // stretch horizontally
-    // no explicit width/height percentages; 'contain' will letterbox correctly
+    flex: 1,
+    alignSelf: "stretch",
   },
   zoomContainer: {
     flex: 1,
@@ -376,5 +395,36 @@ const styles = StyleSheet.create({
   calendarCard: {
     borderRadius: 10,
     backgroundColor: "transparent",
+  },
+
+  // Pages
+  pageWrap: {
+    flexGrow: 1,
+    alignItems: "center",
+    justifyContent: "flex-start",
+    padding: 16,
+    gap: 12,
+  },
+  pageTitle: { fontSize: 22, fontWeight: "700" },
+  pageSubtitle: { fontSize: 16, fontWeight: "600", marginTop: 8 },
+  pageText: { fontSize: 15, color: "#444" },
+  pageHint: { fontSize: 12, color: "#777", marginTop: 8 },
+  colorRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 12,
+    marginTop: 12,
+  },
+  colorSwatch: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  colorSwatchSelected: {
+    borderWidth: 2,
+    borderColor: "#111",
   },
 });
