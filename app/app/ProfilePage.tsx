@@ -1,5 +1,5 @@
 // ProfilePage.tsx
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -8,6 +8,8 @@ import {
   Pressable,
   Image,
   Alert,
+  Modal,
+  FlatList,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
@@ -26,37 +28,60 @@ const formatJoined = (iso?: string | null) => {
   return `${month} ${year}`;
 };
 
+// Title unlock tiers (all will be shown in the modal)
+const TITLE_TIERS = [
+  { threshold: 1, title: "Fashion Enthusiast 👕" },
+  { threshold: 3, title: "Style Explorer 🌟" },
+  { threshold: 5, title: "Trend Setter ✨" },
+  { threshold: 10, title: "Fabulous Snapper 📸" },
+  { threshold: 15, title: "Chic Collector 👗" },
+  { threshold: 30, title: "Wardrobe Wizard 🧥" },
+  { threshold: 60, title: "Designer Lover 👜" },
+  { threshold: 100, title: "Style Icon 👑" },
+];
+
 export default function ProfilePage({ onOpenManual, onOpenSettings }: Props) {
   const [name, setName] = useState<string>("John Doe");
-  const [title, setTitle] = useState<string>("Fashion Enthusiast 👕👖");
+  const [title, setTitle] = useState<string>("Newcomer");
   const [editingName, setEditingName] = useState(false);
-  const [editingTitle, setEditingTitle] = useState(false);
+
+  // Title picker modal
+  const [titlePickerVisible, setTitlePickerVisible] = useState(false);
+
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [installDate, setInstallDate] = useState<string | null>(null);
 
+  // Outfit day count drives unlocks
+  const [outfitCount, setOutfitCount] = useState<number>(0);
+
+  // convenience: do we have any unlocked at all?
+  const hasUnlockedTitles = useMemo(
+    () => TITLE_TIERS.some((t) => outfitCount >= t.threshold),
+    [outfitCount]
+  );
+
   useEffect(() => {
     (async () => {
-      const [n, t, p, i] = await Promise.all([
+      const [n, t, p, i, c] = await Promise.all([
         AsyncStorage.getItem("profileName"),
         AsyncStorage.getItem("profileTitle"),
         AsyncStorage.getItem("profilePhoto"),
         AsyncStorage.getItem("installDate"),
+        AsyncStorage.getItem("outfitCount"),
       ]);
       if (n) setName(n);
       if (t) setTitle(t);
       if (p) setPhotoUri(p);
       if (i) setInstallDate(i);
+      if (c) setOutfitCount(Number(c) || 0);
     })();
   }, []);
 
   const saveName = async () => {
-    await AsyncStorage.setItem("profileName", name.trim() || "John Doe");
+    const cleaned = name.trim() || "John Doe";
+    setName(cleaned);
+    await AsyncStorage.setItem("profileName", cleaned);
     setEditingName(false);
-  };
-
-  const saveTitle = async () => {
-    await AsyncStorage.setItem("profileTitle", title.trim() || "Enthusiast");
-    setEditingTitle(false);
   };
 
   const pickProfileImage = async () => {
@@ -79,6 +104,40 @@ export default function ProfilePage({ onOpenManual, onOpenSettings }: Props) {
       }
     }
   };
+
+  const openTitlePicker = () => {
+    if (!hasUnlockedTitles) {
+      const nextTier = TITLE_TIERS.find((t) => outfitCount < t.threshold);
+      const needed = nextTier ? nextTier.threshold - outfitCount : 0;
+      Alert.alert(
+        "No titles unlocked yet",
+        nextTier
+          ? `Save ${needed} more outfit${needed === 1 ? "" : "s"} to unlock “${
+              nextTier.title
+            }”.`
+          : "Keep styling to unlock more titles!"
+      );
+      return;
+    }
+    setTitlePickerVisible(true);
+  };
+
+  const selectTitle = async (val: string, isLocked: boolean) => {
+    if (isLocked) return; // ignore taps on locked items
+    setTitle(val);
+    await AsyncStorage.setItem("profileTitle", val);
+    setTitlePickerVisible(false);
+  };
+
+  // Next milestone helper for a small hint under the title
+  const nextMilestoneText = useMemo(() => {
+    const next = TITLE_TIERS.find((t) => outfitCount < t.threshold);
+    if (!next) return "All titles unlocked—styling legend!";
+    const remaining = next.threshold - outfitCount;
+    return `Save ${remaining} more outfit${
+      remaining === 1 ? "" : "s"
+    } to unlock “${next.title}”.`;
+  }, [outfitCount]);
 
   return (
     <View style={styles.profilePage}>
@@ -121,38 +180,33 @@ export default function ProfilePage({ onOpenManual, onOpenSettings }: Props) {
         )}
       </View>
 
-      {/* Title row */}
+      {/* Title row — non-editable text + button to pick when unlocked */}
       <View style={styles.row}>
-        {editingTitle ? (
-          <View style={styles.editRow}>
-            <TextInput
-              style={styles.input}
-              value={title}
-              onChangeText={setTitle}
-              placeholder="Your title"
-              autoFocus
-              returnKeyType="done"
-              onSubmitEditing={saveTitle}
+        <View style={styles.displayRow}>
+          <Text style={styles.profileText}>{title}</Text>
+
+          <Pressable
+            style={[
+              styles.iconBtn,
+              !hasUnlockedTitles && { backgroundColor: "#bbb" },
+            ]}
+            onPress={openTitlePicker}
+            accessibilityLabel={
+              hasUnlockedTitles ? "Change title" : "Title locked"
+            }
+          >
+            <Ionicons
+              name={hasUnlockedTitles ? "pricetags" : "lock-closed"}
+              size={14}
+              color="#fff"
             />
-            <Pressable style={styles.iconBtn} onPress={saveTitle}>
-              <Ionicons name="checkmark" size={22} color="#fff" />
-            </Pressable>
-          </View>
-        ) : (
-          <View style={styles.displayRow}>
-            <Text style={styles.profileText}>{title}</Text>
-            <Pressable
-              style={styles.iconBtn}
-              onPress={() => setEditingTitle(true)}
-              accessibilityLabel="Edit title"
-            >
-              <Ionicons name="pencil" size={12} color="#fff" />
-            </Pressable>
-          </View>
-        )}
+          </Pressable>
+        </View>
+        <Text style={styles.helperText}>{nextMilestoneText}</Text>
       </View>
 
       <Text style={styles.joinedText}>Joined: {formatJoined(installDate)}</Text>
+      <Text style={styles.joinedText}>Outfits saved: {outfitCount}</Text>
 
       {/* Actions */}
       <View style={styles.actionRow}>
@@ -169,6 +223,93 @@ export default function ProfilePage({ onOpenManual, onOpenSettings }: Props) {
       <Text style={styles.hint}>
         Tip: tap the avatar to upload/change your profile picture.
       </Text>
+
+      {/* Title Picker Modal (shows both unlocked + locked with remaining count) */}
+      <Modal
+        visible={titlePickerVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setTitlePickerVisible(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Choose your title</Text>
+
+            <FlatList
+              data={TITLE_TIERS}
+              keyExtractor={(item) => String(item.threshold)}
+              renderItem={({ item }) => {
+                const isUnlocked = outfitCount >= item.threshold;
+                const remaining = Math.max(0, item.threshold - outfitCount);
+
+                return (
+                  <Pressable
+                    style={[
+                      styles.titleOption,
+                      !isUnlocked && styles.titleOptionLocked,
+                      item.title === title &&
+                        isUnlocked &&
+                        styles.titleOptionActive,
+                    ]}
+                    onPress={() => selectTitle(item.title, !isUnlocked)}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text
+                        style={[
+                          styles.titleOptionText,
+                          !isUnlocked && { color: "#777" },
+                        ]}
+                      >
+                        {item.title}
+                      </Text>
+                      {!isUnlocked ? (
+                        <Text style={styles.lockedSub}>
+                          Locked • {remaining} more outfit
+                          {remaining === 1 ? "" : "s"} to unlock
+                        </Text>
+                      ) : (
+                        <Text style={styles.unlockedSub}>
+                          Unlocked at {item.threshold} day
+                          {item.threshold === 1 ? "" : "s"}
+                        </Text>
+                      )}
+                    </View>
+
+                    {isUnlocked ? (
+                      item.title === title ? (
+                        <Ionicons
+                          name="checkmark-circle"
+                          size={18}
+                          color="#111"
+                        />
+                      ) : (
+                        <Ionicons
+                          name="ellipse-outline"
+                          size={16}
+                          color="#111"
+                        />
+                      )
+                    ) : (
+                      <Ionicons name="lock-closed" size={16} color="#999" />
+                    )}
+                  </Pressable>
+                );
+              }}
+              ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
+            />
+
+            <Pressable
+              onPress={() => setTitlePickerVisible(false)}
+              style={[
+                styles.actionBtn,
+                { alignSelf: "flex-end", marginTop: 16 },
+              ]}
+            >
+              <Text style={styles.actionText}>Close</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -219,7 +360,18 @@ const styles = StyleSheet.create({
   },
   profileName: { fontSize: 22, fontWeight: "bold", marginTop: 10 },
   profileText: { fontSize: 16, color: "#555", marginTop: 4 },
-  joinedText: { marginTop: 6, fontSize: 14, color: "#666" },
+  joinedText: {
+    marginTop: 6,
+    fontSize: 14,
+    color: "#666",
+    textAlign: "center",
+  },
+  helperText: {
+    marginTop: 4,
+    fontSize: 8,
+    color: "#888",
+    textAlign: "center",
+  },
   actionRow: {
     flexDirection: "row",
     gap: 12,
@@ -236,4 +388,50 @@ const styles = StyleSheet.create({
   },
   actionText: { fontSize: 15, fontWeight: "600", color: "#111" },
   hint: { marginTop: 16, color: "#888", fontSize: 12, textAlign: "center" },
+
+  // Modal styles
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.25)",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 16,
+  },
+  modalCard: {
+    width: "100%",
+    maxWidth: 360,
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: "#000",
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 5,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    marginBottom: 6,
+    textAlign: "center",
+  },
+  titleOption: {
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: "#f7f7f7",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  titleOptionActive: {
+    backgroundColor: "#e8e8e8",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "#ccc",
+  },
+  titleOptionLocked: {
+    opacity: 0.6,
+  },
+  titleOptionText: { fontSize: 15, color: "#111" },
+  lockedSub: { fontSize: 12, color: "#777", marginTop: 2 },
+  unlockedSub: { fontSize: 12, color: "#4a4a4a", marginTop: 2 },
 });

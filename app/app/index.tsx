@@ -24,6 +24,7 @@ type ImageMap = Record<string, string>;
 type Screen = "home" | "profile" | "manual" | "settings";
 
 const toISO = (d: Date) => d.toISOString().split("T")[0];
+const countOutfitDays = (map: ImageMap) => Object.keys(map).length;
 const addDays = (iso: string, delta: number) => {
   const d = new Date(iso);
   d.setDate(d.getDate() + delta);
@@ -39,6 +40,34 @@ export default function StoriesArchive() {
   const [modalVisible, setModalVisible] = useState(false);
   const [modalUri, setModalUri] = useState<string | null>(null);
 
+  // Clear everything (all days)
+  const clearAllImages = () => {
+    Alert.alert(
+      "Clear all outfits?",
+      "This will remove all saved outfits (red dots) for every day.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete all",
+          style: "destructive",
+          onPress: async () => {
+            // Clear state
+            setImages({});
+
+            // Storage: remove all images and reset count
+            await AsyncStorage.removeItem("dateImages");
+            await AsyncStorage.setItem("outfitCount", "0");
+
+            // Optional: also reset the “last seen tier” so titles re-open on next unlock
+            // await AsyncStorage.setItem("titleLastSeenTier", "0");
+
+            Alert.alert("Done", "All outfits have been cleared.");
+          },
+        },
+      ]
+    );
+  };
+
   // Theming (background colour)
   const [bgColor, setBgColor] = useState<string>("#fff");
 
@@ -51,6 +80,14 @@ export default function StoriesArchive() {
     (async () => {
       const raw = await AsyncStorage.getItem("dateImages");
       if (raw) setImages(JSON.parse(raw));
+      if (raw) {
+        const parsed: ImageMap = JSON.parse(raw);
+        setImages(parsed);
+
+        // 🔵 NEW: write initial outfitCount based on loaded data
+        const initialCount = countOutfitDays(parsed);
+        await AsyncStorage.setItem("outfitCount", String(initialCount));
+      }
 
       // ensure install date saved once
       const existingInstall = await AsyncStorage.getItem("installDate");
@@ -65,7 +102,14 @@ export default function StoriesArchive() {
   }, []);
 
   useEffect(() => {
-    AsyncStorage.setItem("dateImages", JSON.stringify(images));
+    (async () => {
+      // persist the images map
+      await AsyncStorage.setItem("dateImages", JSON.stringify(images));
+
+      // 🔵 NEW: update outfitCount every time images change
+      const count = countOutfitDays(images);
+      await AsyncStorage.setItem("outfitCount", String(count));
+    })();
   }, [images]);
 
   const takePicture = async () => {
@@ -152,6 +196,13 @@ export default function StoriesArchive() {
               }}
             />
           </LinearGradient>
+          {/* DEV: Clear-all button */}
+          {__DEV__ && (
+            <Pressable style={styles.devBtn} onPress={clearAllImages}>
+              <Ionicons name="trash-outline" size={16} color="#111" />
+              <Text style={{ fontWeight: "600" }}>DEV: Clear all outfits</Text>
+            </Pressable>
+          )}
 
           {selectedDate && (
             <TapGestureHandler
@@ -426,5 +477,17 @@ const styles = StyleSheet.create({
   colorSwatchSelected: {
     borderWidth: 2,
     borderColor: "#111",
+  },
+  devBtn: {
+    alignSelf: "flex-end",
+    marginBottom: 8,
+    marginRight: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: "#f4f4f4",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
   },
 });
