@@ -8,9 +8,9 @@ Welcome to your **Cloday Home Screen** 🎉
 This is where all the magic begins! Let’s take a quick tour of the features you’ll be using the most.  
 
 <p float="left">
-<img src="https://github.com/user-attachments/assets/fcc873c4-8d5b-44b4-bd4c-39c5ffb1ff5e" width="200">
-<img src="https://github.com/user-attachments/assets/20cb8f57-8bc3-4c1e-8964-2d3c6e63687c" width="200">
-<img src="https://github.com/user-attachments/assets/1984207c-b1d7-43a8-8217-5fa55284f025" width="200">
+<img src="https://github.com/user-attachments/assets/fcc873c4-8d5b-44b4-bd4c-39c5ffb1ff5e" width="250">
+<img src="https://github.com/user-attachments/assets/20cb8f57-8bc3-4c1e-8964-2d3c6e63687c" width="250">
+<img src="https://github.com/user-attachments/assets/1984207c-b1d7-43a8-8217-5fa55284f025" width="250">
 </p>
 
 ---
@@ -40,9 +40,9 @@ Your **Profile Screen** is where you make Cloday truly yours ✨
 Here you can customize your personal details and tweak the look of your app.  
 
 <p float="left">
-  <img src="https://github.com/user-attachments/assets/21d8bc53-241e-4294-be6e-faff3ba83dee" width="200">  
-  <img src="https://github.com/user-attachments/assets/58b45d4c-86ec-4af8-8860-6bb4e1755ff4" width="200">
-  <img src="https://github.com/user-attachments/assets/81e6fa2e-823d-45eb-90e2-93535a38a6d9" width="200">
+  <img src="https://github.com/user-attachments/assets/21d8bc53-241e-4294-be6e-faff3ba83dee" width="250">  
+  <img src="https://github.com/user-attachments/assets/58b45d4c-86ec-4af8-8860-6bb4e1755ff4" width="250">
+  <img src="https://github.com/user-attachments/assets/81e6fa2e-823d-45eb-90e2-93535a38a6d9" width="250">
 </p>
 
 ---
@@ -61,9 +61,9 @@ Cloday makes it super easy to save the outfits you capture 📸.
 With just a simple **swipe right**, your OOTD will be stored in the calendar for future viewing.  
 
 <p float="left">
-  <img src="https://github.com/user-attachments/assets/c9d2e5ed-1ef0-4dad-8c8d-f113887a1261" width="200">
-  <img src="https://github.com/user-attachments/assets/e7206ac6-4984-4431-957a-0032ac66c4ad" width="200">
-  <img src="https://github.com/user-attachments/assets/a3ab078b-232d-4492-a70e-31400371c95f" width="200">
+  <img src="https://github.com/user-attachments/assets/c9d2e5ed-1ef0-4dad-8c8d-f113887a1261" width="250">
+  <img src="https://github.com/user-attachments/assets/e7206ac6-4984-4431-957a-0032ac66c4ad" width="250">
+  <img src="https://github.com/user-attachments/assets/a3ab078b-232d-4492-a70e-31400371c95f" width="250">
 </p>
 
 ---
@@ -83,9 +83,9 @@ Sometimes you might want to remove an outfit you’ve logged—no worries, Cloda
 With a quick **swipe left**, you can delete an outfit from your calendar.  
 
 <p float="left">
-  <img src="https://github.com/user-attachments/assets/f6f89750-0b4c-4b04-a59e-0bbfe1f7fbe0" width="200">
-  <img src="https://github.com/user-attachments/assets/d571a75b-e7b1-498e-822f-5f3e65bfe29f" width="200">
-  <img src="https://github.com/user-attachments/assets/21d8bc53-241e-4294-be6e-faff3ba83dee" width="200">
+  <img src="https://github.com/user-attachments/assets/f6f89750-0b4c-4b04-a59e-0bbfe1f7fbe0" width="250">
+  <img src="https://github.com/user-attachments/assets/d571a75b-e7b1-498e-822f-5f3e65bfe29f" width="250">
+  <img src="https://github.com/user-attachments/assets/21d8bc53-241e-4294-be6e-faff3ba83dee" width="250">
 </p>
 
 
