@@ -10,7 +10,10 @@ import {
   Alert,
   Modal,
   FlatList,
+  useWindowDimensions,
+  Platform,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -28,7 +31,7 @@ const formatJoined = (iso?: string | null) => {
   return `${month} ${year}`;
 };
 
-// Title unlock tiers (all will be shown in the modal)
+// Title unlock tiers (all shown in the modal)
 const TITLE_TIERS = [
   { threshold: 1, title: "Fashion Enthusiast 👕" },
   { threshold: 3, title: "Style Explorer 🌟" },
@@ -45,7 +48,6 @@ export default function ProfilePage({ onOpenManual, onOpenSettings }: Props) {
   const [title, setTitle] = useState<string>("Newcomer");
   const [editingName, setEditingName] = useState(false);
 
-  // Title picker modal
   const [titlePickerVisible, setTitlePickerVisible] = useState(false);
 
   const [photoUri, setPhotoUri] = useState<string | null>(null);
@@ -54,7 +56,6 @@ export default function ProfilePage({ onOpenManual, onOpenSettings }: Props) {
   // Outfit day count drives unlocks
   const [outfitCount, setOutfitCount] = useState<number>(0);
 
-  // convenience: do we have any unlocked at all?
   const hasUnlockedTitles = useMemo(
     () => TITLE_TIERS.some((t) => outfitCount >= t.threshold),
     [outfitCount]
@@ -123,38 +124,104 @@ export default function ProfilePage({ onOpenManual, onOpenSettings }: Props) {
   };
 
   const selectTitle = async (val: string, isLocked: boolean) => {
-    if (isLocked) return; // ignore taps on locked items
+    if (isLocked) return;
     setTitle(val);
     await AsyncStorage.setItem("profileTitle", val);
     setTitlePickerVisible(false);
   };
 
-  // Next milestone helper for a small hint under the title
+  // Progress helpers
+  const nextTier = useMemo(
+    () => TITLE_TIERS.find((t) => outfitCount < t.threshold),
+    [outfitCount]
+  );
   const nextMilestoneText = useMemo(() => {
-    const next = TITLE_TIERS.find((t) => outfitCount < t.threshold);
-    if (!next) return "All titles unlocked—styling legend!";
-    const remaining = next.threshold - outfitCount;
+    if (!nextTier) return "All titles unlocked — styling legend!";
+    const remaining = nextTier.threshold - outfitCount;
     return `Save ${remaining} more outfit${
       remaining === 1 ? "" : "s"
-    } to unlock “${next.title}”.`;
-  }, [outfitCount]);
+    } to unlock “${nextTier.title}”.`;
+  }, [nextTier, outfitCount]);
+
+  const progressPercent = useMemo(() => {
+    if (!nextTier) return 100;
+    const prevThreshold =
+      TITLE_TIERS.slice()
+        .reverse()
+        .find((t) => t.threshold <= outfitCount)?.threshold ?? 0;
+    const span = nextTier.threshold - prevThreshold;
+    const gained = outfitCount - prevThreshold;
+    return Math.max(0, Math.min(100, Math.round((gained / span) * 100)));
+  }, [outfitCount, nextTier]);
+
+  // --------- RESPONSIVE FIT-TO-SCREEN LOGIC ----------
+  const { height } = useWindowDimensions();
+  // Three layout modes by device height
+  const isUltraCompact = height < 640;
+  const isCompact = !isUltraCompact && height < 740;
+
+  // Sizes derived from mode
+  const AVATAR = isUltraCompact ? 120 : isCompact ? 140 : 160;
+  const NAME_F = isUltraCompact ? 22 : isCompact ? 26 : 28;
+  const TITLE_F = isUltraCompact ? 15 : isCompact ? 16 : 18;
+  const PAD = isUltraCompact ? 12 : 16;
+  const CARD_R = 16;
+  const GAP = isUltraCompact ? 8 : 10;
+  const BTN_PY = isUltraCompact ? 10 : 12;
+  const STAT_VALUE_F = isUltraCompact ? 16 : 18;
+  const STAT_LABEL_F = 12;
+  const CARD_SPACE = isUltraCompact ? 10 : 14;
+  const PROGRESS_H = isUltraCompact ? 10 : 12;
 
   return (
-    <View style={styles.profilePage}>
-      <Pressable onPress={pickProfileImage}>
-        {photoUri ? (
-          <Image source={{ uri: photoUri }} style={styles.avatar} />
-        ) : (
-          <Ionicons name="person-circle" size={120} color="#888" />
-        )}
-      </Pressable>
+    <SafeAreaView style={[styles.page, { padding: PAD }]}>
+      {/* HERO: Avatar + Main Info */}
+      <View
+        style={[
+          styles.heroCard,
+          {
+            padding: PAD,
+            borderRadius: CARD_R + 2,
+            marginBottom: CARD_SPACE,
+          },
+        ]}
+      >
+        <Pressable onPress={pickProfileImage} style={styles.avatarWrap}>
+          {photoUri ? (
+            <Image
+              source={{ uri: photoUri }}
+              style={[
+                styles.avatar,
+                { width: AVATAR, height: AVATAR, borderRadius: AVATAR / 2 },
+              ]}
+            />
+          ) : (
+            <Ionicons name="person-circle" size={AVATAR} color="#b8b8b8" />
+          )}
+          <View
+            style={[styles.avatarBadge, { padding: isUltraCompact ? 5 : 6 }]}
+          >
+            <Ionicons
+              name="camera"
+              size={isUltraCompact ? 14 : 16}
+              color="#fff"
+            />
+          </View>
+        </Pressable>
 
-      {/* Name row */}
-      <View style={styles.row}>
+        {/* Name row */}
         {editingName ? (
-          <View style={styles.editRow}>
+          <View style={[styles.editRow, { marginTop: GAP }]}>
             <TextInput
-              style={styles.input}
+              style={[
+                styles.input,
+                {
+                  paddingVertical: isUltraCompact ? 8 : 10,
+                  paddingHorizontal: 14,
+                  fontSize: isUltraCompact ? 15 : 16,
+                  maxWidth: 320,
+                },
+              ]}
               value={name}
               onChangeText={setName}
               placeholder="Your name"
@@ -162,69 +229,200 @@ export default function ProfilePage({ onOpenManual, onOpenSettings }: Props) {
               returnKeyType="done"
               onSubmitEditing={saveName}
             />
-            <Pressable style={styles.iconBtn} onPress={saveName}>
-              <Ionicons name="checkmark" size={22} color="#fff" />
+            <Pressable
+              style={[
+                styles.iconBtnPrimary,
+                { paddingVertical: BTN_PY - 2, paddingHorizontal: 14 },
+              ]}
+              onPress={saveName}
+              accessibilityLabel="Save name"
+            >
+              <Ionicons name="checkmark" size={20} color="#fff" />
             </Pressable>
           </View>
         ) : (
-          <View style={styles.displayRow}>
-            <Text style={styles.profileName}>{name}</Text>
+          <View style={[styles.nameRow, { marginTop: GAP }]}>
+            <Text
+              style={[styles.nameText, { fontSize: NAME_F, maxWidth: 240 }]}
+              numberOfLines={1}
+            >
+              {name}
+            </Text>
             <Pressable
-              style={styles.iconBtn}
+              style={[
+                styles.iconBtn,
+                { paddingVertical: 8, paddingHorizontal: 12 },
+              ]}
               onPress={() => setEditingName(true)}
               accessibilityLabel="Edit name"
             >
-              <Ionicons name="pencil" size={12} color="#fff" />
+              <Ionicons name="pencil" size={16} color="#111" />
             </Pressable>
           </View>
         )}
-      </View>
 
-      {/* Title row — non-editable text + button to pick when unlocked */}
-      <View style={styles.row}>
-        <View style={styles.displayRow}>
-          <Text style={styles.profileText}>{title}</Text>
+        {/* Title row */}
+        <View style={[styles.titleRow, { marginTop: GAP }]}>
+          <Text
+            style={[styles.titleText, { fontSize: TITLE_F }]}
+            numberOfLines={1}
+          >
+            {title}
+          </Text>
 
           <Pressable
-            style={[
-              styles.iconBtn,
-              !hasUnlockedTitles && { backgroundColor: "#bbb" },
-            ]}
+            style={styles.titleIconBtn}
             onPress={openTitlePicker}
             accessibilityLabel={
               hasUnlockedTitles ? "Change title" : "Title locked"
             }
+            disabled={!hasUnlockedTitles}
           >
             <Ionicons
               name={hasUnlockedTitles ? "pricetags" : "lock-closed"}
-              size={14}
-              color="#fff"
+              size={18}
+              color={hasUnlockedTitles ? "#111" : "#999"}
             />
           </Pressable>
         </View>
-        <Text style={styles.helperText}>{nextMilestoneText}</Text>
+
+        {/* Quick Stats */}
+        <View
+          style={[
+            styles.statsRow,
+            {
+              marginTop: GAP + 4,
+              paddingVertical: isUltraCompact ? 10 : 12,
+              paddingHorizontal: 10,
+              borderRadius: 14,
+            },
+          ]}
+        >
+          <View style={styles.statBox}>
+            <Text style={[styles.statValue, { fontSize: STAT_VALUE_F }]}>
+              {outfitCount}
+            </Text>
+            <Text style={[styles.statLabel, { fontSize: STAT_LABEL_F }]}>
+              Outfits
+            </Text>
+          </View>
+          <View style={styles.divider} />
+          <View style={styles.statBox}>
+            <Text style={[styles.statValue, { fontSize: STAT_VALUE_F }]}>
+              {formatJoined(installDate)}
+            </Text>
+            <Text style={[styles.statLabel, { fontSize: STAT_LABEL_F }]}>
+              Joined
+            </Text>
+          </View>
+          <View style={styles.divider} />
+          <View style={styles.statBox}>
+            <Text
+              style={[styles.statValue, { fontSize: STAT_VALUE_F }]}
+              numberOfLines={1}
+            >
+              🎯
+            </Text>
+            <Text style={[styles.statLabel, { fontSize: STAT_LABEL_F }]}>
+              Streak
+            </Text>
+          </View>
+        </View>
       </View>
 
-      <Text style={styles.joinedText}>Joined: {formatJoined(installDate)}</Text>
-      <Text style={styles.joinedText}>Outfits saved: {outfitCount}</Text>
-
-      {/* Actions */}
-      <View style={styles.actionRow}>
-        <Pressable style={styles.actionBtn} onPress={onOpenManual}>
-          <Ionicons name="book-outline" size={18} color="#111" />
-          <Text style={styles.actionText}>User Manual</Text>
-        </Pressable>
-        <Pressable style={styles.actionBtn} onPress={onOpenSettings}>
-          <Ionicons name="settings-outline" size={18} color="#111" />
-          <Text style={styles.actionText}>Settings</Text>
-        </Pressable>
+      {/* PROGRESS: Title Unlock */}
+      <View
+        style={[
+          styles.card,
+          { padding: PAD, borderRadius: CARD_R, marginBottom: CARD_SPACE },
+        ]}
+      >
+        <View style={styles.cardHeader}>
+          <Text
+            style={[styles.cardTitle, { fontSize: isUltraCompact ? 17 : 18 }]}
+          >
+            Title Progress
+          </Text>
+          <Text style={styles.cardMeta}>{progressPercent}%</Text>
+        </View>
+        <View style={[styles.progressTrack, { height: PROGRESS_H }]}>
+          <View
+            style={[styles.progressFill, { width: `${progressPercent}%` }]}
+          />
+        </View>
+        <Text style={[styles.helperTextLarge, { marginTop: GAP - 2 }]}>
+          {nextMilestoneText}
+        </Text>
       </View>
 
-      <Text style={styles.hint}>
-        Tip: tap the avatar to upload/change your profile picture.
-      </Text>
+      {/* QUICK ACTIONS */}
+      <View
+        style={[
+          styles.card,
+          { padding: PAD, borderRadius: CARD_R, marginBottom: 0 },
+        ]}
+      >
+        <Text
+          style={[styles.cardTitle, { fontSize: isUltraCompact ? 17 : 18 }]}
+        >
+          Quick Actions
+        </Text>
 
-      {/* Title Picker Modal (shows both unlocked + locked with remaining count) */}
+        {/* On ultra-compact screens reduce to tighter grid gaps */}
+        <View
+          style={[
+            styles.quickGrid,
+            { gap: isUltraCompact ? 8 : 10, marginTop: 8 },
+          ]}
+        >
+          <Pressable
+            style={[styles.quickBtn, { paddingVertical: BTN_PY }]}
+            onPress={pickProfileImage}
+          >
+            <Ionicons name="image-outline" size={22} color="#111" />
+            <Text style={styles.quickTxt}>Change Photo</Text>
+          </Pressable>
+
+          <Pressable
+            style={[styles.quickBtn, { paddingVertical: BTN_PY }]}
+            onPress={() => setEditingName(true)}
+          >
+            <Ionicons name="create-outline" size={22} color="#111" />
+            <Text style={styles.quickTxt}>Edit Name</Text>
+          </Pressable>
+
+          <Pressable
+            style={[styles.quickBtn, { paddingVertical: BTN_PY }]}
+            onPress={openTitlePicker}
+          >
+            <Ionicons name="pricetags-outline" size={22} color="#111" />
+            <Text style={styles.quickTxt}>Titles</Text>
+          </Pressable>
+
+          <Pressable
+            style={[styles.quickBtn, { paddingVertical: BTN_PY }]}
+            onPress={onOpenManual}
+          >
+            <Ionicons name="book-outline" size={22} color="#111" />
+            <Text style={styles.quickTxt}>User Manual</Text>
+          </Pressable>
+
+          <Pressable
+            style={[styles.quickBtn, { paddingVertical: BTN_PY }]}
+            onPress={onOpenSettings}
+          >
+            <Ionicons name="settings-outline" size={22} color="#111" />
+            <Text style={styles.quickTxt}>Settings</Text>
+          </Pressable>
+
+          <View style={[styles.quickBtnDisabled, { paddingVertical: BTN_PY }]}>
+            <Ionicons name="calendar-outline" size={22} color="#999" />
+            <Text style={styles.quickTxtDisabled}>Calendar</Text>
+          </View>
+        </View>
+      </View>
+
+      {/* Title Picker Modal */}
       <Modal
         visible={titlePickerVisible}
         transparent
@@ -259,6 +457,7 @@ export default function ProfilePage({ onOpenManual, onOpenSettings }: Props) {
                           styles.titleOptionText,
                           !isUnlocked && { color: "#777" },
                         ]}
+                        numberOfLines={1}
                       >
                         {item.title}
                       </Text>
@@ -300,43 +499,66 @@ export default function ProfilePage({ onOpenManual, onOpenSettings }: Props) {
 
             <Pressable
               onPress={() => setTitlePickerVisible(false)}
-              style={[
-                styles.actionBtn,
-                { alignSelf: "flex-end", marginTop: 16 },
-              ]}
+              style={styles.primaryBtn}
             >
-              <Text style={styles.actionText}>Close</Text>
+              <Text style={styles.primaryBtnText}>Close</Text>
             </Pressable>
           </View>
         </View>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  profilePage: {
+  page: {
     flex: 1,
+    backgroundColor: "#fafafa",
+  },
+
+  // HERO
+  heroCard: {
+    backgroundColor: "#fff",
     alignItems: "center",
-    justifyContent: "center",
-    padding: 16,
-    gap: 8,
+    shadowColor: "#000",
+    shadowOpacity: Platform.OS === "ios" ? 0.12 : 0.18,
+    shadowRadius: 12,
+    elevation: 3,
   },
+  avatarWrap: { position: "relative" },
   avatar: {
-    width: 120,
-    height: 120,
-    borderRadius: 999,
-    borderWidth: 2,
-    borderColor: "#e8e8e8",
+    borderWidth: 3,
+    borderColor: "#efefef",
   },
-  row: { width: "90%" },
-  displayRow: {
+  avatarBadge: {
+    position: "absolute",
+    right: 6,
+    bottom: 6,
+    backgroundColor: "#111",
+    borderRadius: 999,
+  },
+  nameRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    justifyContent: "center",
+    gap: 10,
+  },
+  nameText: {
+    fontWeight: "800",
+  },
+  iconBtn: {
+    backgroundColor: "#eee",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
+  iconBtnPrimary: {
+    backgroundColor: "#111",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
   },
   editRow: {
+    width: "100%",
     flexDirection: "row",
     gap: 8,
     alignItems: "center",
@@ -345,49 +567,131 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     backgroundColor: "#fff",
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    borderRadius: 12,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: "#ddd",
-    maxWidth: 300,
   },
-  iconBtn: {
-    backgroundColor: "#111",
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderRadius: 10,
-  },
-  profileName: { fontSize: 22, fontWeight: "bold", marginTop: 10 },
-  profileText: { fontSize: 16, color: "#555", marginTop: 4 },
-  joinedText: {
-    marginTop: 6,
-    fontSize: 14,
-    color: "#666",
-    textAlign: "center",
-  },
-  helperText: {
-    marginTop: 4,
-    fontSize: 8,
-    color: "#888",
-    textAlign: "center",
-  },
-  actionRow: {
+  titleRow: {
+    width: "100%",
     flexDirection: "row",
-    gap: 12,
-    marginTop: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
   },
-  actionBtn: {
-    backgroundColor: "#f4f4f4",
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 12,
+
+  titleIconBtn: {
+    padding: 6,
+    borderRadius: 8,
+    // keep it subtle; no bg needed, but uncomment if you want a chip feel:
+    backgroundColor: "#f2f2f2",
+  },
+  titleText: {
+    color: "#444",
+    fontWeight: "700",
+  },
+  changeTitleBtn: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
+    backgroundColor: "#f2f2f2",
   },
-  actionText: { fontSize: 15, fontWeight: "600", color: "#111" },
-  hint: { marginTop: 16, color: "#888", fontSize: 12, textAlign: "center" },
+  changeTitleBtnDisabled: {
+    opacity: 0.6,
+  },
+  changeTitleTxt: { fontSize: 14, color: "#111", fontWeight: "600" },
+
+  statsRow: {
+    width: "100%",
+    flexDirection: "row",
+    alignItems: "stretch",
+    justifyContent: "space-between",
+    backgroundColor: "#f7f7f7",
+  },
+  statBox: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 2,
+  },
+  statValue: {
+    fontWeight: "800",
+  },
+  statLabel: {
+    color: "#666",
+    marginTop: 2,
+    fontSize: 12,
+  },
+  divider: {
+    width: 1,
+    backgroundColor: "#e5e5e5",
+    marginHorizontal: 6,
+  },
+
+  // GENERIC CARD
+  card: {
+    backgroundColor: "#fff",
+    shadowColor: "#000",
+    shadowOpacity: Platform.OS === "ios" ? 0.08 : 0.14,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  cardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 10,
+  },
+  cardTitle: {
+    fontWeight: "800",
+  },
+  cardMeta: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#666",
+  },
+
+  // Progress
+  progressTrack: {
+    backgroundColor: "#eee",
+    borderRadius: 999,
+    overflow: "hidden",
+  },
+  progressFill: {
+    height: "100%",
+    backgroundColor: "#111",
+  },
+  helperTextLarge: {
+    fontSize: 13,
+    color: "#666",
+  },
+
+  // Quick actions
+  quickGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+  },
+  quickBtn: {
+    width: "48%",
+    backgroundColor: "#f7f7f7",
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  quickBtnDisabled: {
+    width: "48%",
+    backgroundColor: "#f0f0f0",
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    opacity: 0.6,
+  },
+  quickTxt: { fontSize: 14, fontWeight: "700", color: "#111" },
+  quickTxtDisabled: { fontSize: 14, fontWeight: "700", color: "#999" },
 
   // Modal styles
   modalBackdrop: {
@@ -399,7 +703,7 @@ const styles = StyleSheet.create({
   },
   modalCard: {
     width: "100%",
-    maxWidth: 360,
+    maxWidth: 380,
     backgroundColor: "#fff",
     borderRadius: 16,
     padding: 16,
@@ -410,8 +714,8 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: 18,
-    fontWeight: "700",
-    marginBottom: 6,
+    fontWeight: "800",
+    marginBottom: 8,
     textAlign: "center",
   },
   titleOption: {
@@ -424,14 +728,28 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   titleOptionActive: {
-    backgroundColor: "#e8e8e8",
+    backgroundColor: "#eaeaea",
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: "#ccc",
   },
   titleOptionLocked: {
     opacity: 0.6,
   },
-  titleOptionText: { fontSize: 15, color: "#111" },
+  titleOptionText: { fontSize: 15, color: "#111", fontWeight: "700" },
   lockedSub: { fontSize: 12, color: "#777", marginTop: 2 },
   unlockedSub: { fontSize: 12, color: "#4a4a4a", marginTop: 2 },
+
+  primaryBtn: {
+    backgroundColor: "#111",
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 10,
+    marginTop: 16,
+  },
+  primaryBtnText: {
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: 15,
+  },
 });
