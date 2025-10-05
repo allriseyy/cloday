@@ -50,7 +50,7 @@ Here you can customize your personal details and tweak the look of your app.
 ## ✨ What you can do on the Profile Screen:
 - **✏️ Change your name** — Personalize your account with your preferred display name.  
 - **🏷️ Update your title** — Add a fun or stylish title that represents you.  
-- **📖 Access the User Manual** — Quick access to guides, tips, and tricks to get the most out of Cloday.  
+- **📖 Track Your Outfits to Unlock New Titles — Log your daily outfits in Cloday and earn stylish new titles as you progress!
 - **🎨 Settings** — Customize the background color of your pages to match your vibe.  
 
 ---
