@@ -85,7 +85,7 @@ With a quick **swipe left**, you can delete an outfit from your calendar.
 <p float="left">
   <img src="https://github.com/user-attachments/assets/f6f89750-0b4c-4b04-a59e-0bbfe1f7fbe0" width="250">
   <img src="https://github.com/user-attachments/assets/d571a75b-e7b1-498e-822f-5f3e65bfe29f" width="250">
-  <img src="https://github.com/user-attachments/assets/21d8bc53-241e-4294-be6e-faff3ba83dee" width="250">
+  <img src="https://github.com/user-attachments/assets/fcc873c4-8d5b-44b4-bd4c-39c5ffb1ff5e" width="250">
 </p>
 
 
