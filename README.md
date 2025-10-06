@@ -40,10 +40,10 @@ Your **Profile Screen** is where you make Cloday truly yours ✨
 Here you can customize your personal details and tweak the look of your app.  
 
 <p float="left">
-  <img src="https://github.com/user-attachments/assets/2c59696c-8116-4dad-89b0-3906e7495c07" width="225">
-  <img src="https://github.com/user-attachments/assets/58b45d4c-86ec-4af8-8860-6bb4e1755ff4" width="225">
-  <img src="https://github.com/user-attachments/assets/81e6fa2e-823d-45eb-90e2-93535a38a6d9" width="225">
-  <img src="https://github.com/user-attachments/assets/7e271f7d-7bf6-4a31-9ff3-f6d33b8f7087" width="225">
+  <img src="https://github.com/user-attachments/assets/ed1099e4-7c24-4b9b-a7a1-4fc25d9ce04b" width="215"/>
+  <img src="https://github.com/user-attachments/assets/58b45d4c-86ec-4af8-8860-6bb4e1755ff4" width="215">
+  <img src="https://github.com/user-attachments/assets/81e6fa2e-823d-45eb-90e2-93535a38a6d9" width="215">
+  <img src="https://github.com/user-attachments/assets/7e271f7d-7bf6-4a31-9ff3-f6d33b8f7087" width="215">
 </p>
 
 ---
