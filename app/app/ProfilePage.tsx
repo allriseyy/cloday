@@ -12,8 +12,8 @@ import {
   FlatList,
   useWindowDimensions,
   Platform,
+  ScrollView,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -174,7 +174,12 @@ export default function ProfilePage({ onOpenManual, onOpenSettings }: Props) {
   const PROGRESS_H = isUltraCompact ? 10 : 12;
 
   return (
-    <SafeAreaView style={[styles.page, { padding: PAD }]}>
+    <ScrollView
+      style={styles.page}
+      contentContainerStyle={{ padding: PAD }}
+      showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
+    >
       {/* HERO: Avatar + Main Info */}
       <View
         style={[
@@ -404,7 +409,7 @@ export default function ProfilePage({ onOpenManual, onOpenSettings }: Props) {
             onPress={onOpenManual}
           >
             <Ionicons name="book-outline" size={22} color="#111" />
-            <Text style={styles.quickTxt}>User Manual</Text>
+            <Text style={styles.quickTxt}>Manual</Text>
           </Pressable>
 
           <Pressable
@@ -506,7 +511,7 @@ export default function ProfilePage({ onOpenManual, onOpenSettings }: Props) {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </ScrollView>
   );
 }
 
@@ -615,6 +620,7 @@ const styles = StyleSheet.create({
   },
   statValue: {
     fontWeight: "800",
+    textAlign: "center",
   },
   statLabel: {
     color: "#666",
