@@ -197,12 +197,12 @@ export default function StoriesArchive() {
             />
           </LinearGradient>
           {/* DEV: Clear-all button */}
-          {__DEV__ && (
+          {/* {__DEV__ && (
             <Pressable style={styles.devBtn} onPress={clearAllImages}>
               <Ionicons name="trash-outline" size={16} color="#111" />
               <Text style={{ fontWeight: "600" }}>DEV: Clear all outfits</Text>
             </Pressable>
-          )}
+          )} */}
 
           {selectedDate && (
             <TapGestureHandler
