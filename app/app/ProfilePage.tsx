@@ -13,6 +13,7 @@ import {
   useWindowDimensions,
   Platform,
   ScrollView,
+  Linking,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
@@ -30,6 +31,8 @@ const formatJoined = (iso?: string | null) => {
   const year = d.getFullYear();
   return `${month} ${year}`;
 };
+
+const instagramUrl = "https://instagram.com/yiyonglim"; // ← change this
 
 // Title unlock tiers (all shown in the modal)
 const TITLE_TIERS = [
@@ -55,6 +58,10 @@ export default function ProfilePage({ onOpenManual, onOpenSettings }: Props) {
 
   // Outfit day count drives unlocks
   const [outfitCount, setOutfitCount] = useState<number>(0);
+
+  // --- Newsletter modal state ---
+  const [newsletterOpen, setNewsletterOpen] = useState(false);
+  const [newsletterEmail, setNewsletterEmail] = useState("");
 
   const hasUnlockedTitles = useMemo(
     () => TITLE_TIERS.some((t) => outfitCount >= t.threshold),
@@ -83,6 +90,20 @@ export default function ProfilePage({ onOpenManual, onOpenSettings }: Props) {
     setName(cleaned);
     await AsyncStorage.setItem("profileName", cleaned);
     setEditingName(false);
+  };
+
+  // Inside ProfilePage component (alongside sendFeedbackEmail, submitNewsletter, etc.)
+  const openInstagram = async () => {
+    try {
+      const can = await Linking.canOpenURL(instagramUrl);
+      if (can) {
+        await Linking.openURL(instagramUrl);
+      } else {
+        Alert.alert("Unable to open", "Please visit: " + instagramUrl);
+      }
+    } catch (e) {
+      Alert.alert("Error", "Something went wrong opening Instagram.");
+    }
   };
 
   const pickProfileImage = async () => {
@@ -130,6 +151,48 @@ export default function ProfilePage({ onOpenManual, onOpenSettings }: Props) {
     setTitlePickerVisible(false);
   };
 
+  const sendFeedbackEmail = async () => {
+    const email = "allriseyy@gmail.com";
+    const subject = encodeURIComponent("Cloday Feedback");
+    const body = encodeURIComponent(
+      "Hi there,\n\nI’d like to share the following feedback:\n\n"
+    );
+    const url = `mailto:${email}?subject=${subject}&body=${body}`;
+
+    const canOpen = await Linking.canOpenURL(url);
+    if (canOpen) {
+      await Linking.openURL(url);
+    } else {
+      Alert.alert("Error", "Could not open email app on this device.");
+    }
+  };
+
+  // --- Newsletter helpers ---
+  const validateEmail = (val: string) =>
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val.trim());
+
+  const submitNewsletter = async () => {
+    const cleaned = newsletterEmail.trim();
+    if (!validateEmail(cleaned)) {
+      Alert.alert("Invalid email", "Please enter a valid email address.");
+      return;
+    }
+    const to = "allriseyy@gmail.com"; // change if needed
+    const subject = encodeURIComponent("Newsletter Signup");
+    const body = encodeURIComponent(
+      `Please add me to your newsletter.\n\nEmail: ${cleaned}\n\n(From Profile > Newsletter)`
+    );
+    const url = `mailto:${to}?subject=${subject}&body=${body}`;
+    const can = await Linking.canOpenURL(url);
+    if (can) {
+      await Linking.openURL(url);
+      setNewsletterOpen(false);
+      setNewsletterEmail("");
+    } else {
+      Alert.alert("Unable to open email app", `Please email us at ${to}`);
+    }
+  };
+
   // Progress helpers
   const nextTier = useMemo(
     () => TITLE_TIERS.find((t) => outfitCount < t.threshold),
@@ -156,11 +219,9 @@ export default function ProfilePage({ onOpenManual, onOpenSettings }: Props) {
 
   // --------- RESPONSIVE FIT-TO-SCREEN LOGIC ----------
   const { height } = useWindowDimensions();
-  // Three layout modes by device height
   const isUltraCompact = height < 640;
   const isCompact = !isUltraCompact && height < 740;
 
-  // Sizes derived from mode
   const AVATAR = isUltraCompact ? 120 : isCompact ? 140 : 160;
   const NAME_F = isUltraCompact ? 22 : isCompact ? 26 : 28;
   const TITLE_F = isUltraCompact ? 15 : isCompact ? 16 : 18;
@@ -220,6 +281,7 @@ export default function ProfilePage({ onOpenManual, onOpenSettings }: Props) {
             <TextInput
               style={[
                 styles.input,
+                styles.inputInline,
                 {
                   paddingVertical: isUltraCompact ? 8 : 10,
                   paddingHorizontal: 14,
@@ -364,7 +426,7 @@ export default function ProfilePage({ onOpenManual, onOpenSettings }: Props) {
       <View
         style={[
           styles.card,
-          { padding: PAD, borderRadius: CARD_R, marginBottom: 0 },
+          { padding: PAD, borderRadius: CARD_R, marginBottom: CARD_SPACE },
         ]}
       >
         <Text
@@ -373,7 +435,6 @@ export default function ProfilePage({ onOpenManual, onOpenSettings }: Props) {
           Quick Actions
         </Text>
 
-        {/* On ultra-compact screens reduce to tighter grid gaps */}
         <View
           style={[
             styles.quickGrid,
@@ -384,8 +445,8 @@ export default function ProfilePage({ onOpenManual, onOpenSettings }: Props) {
             style={[styles.quickBtn, { paddingVertical: BTN_PY }]}
             onPress={pickProfileImage}
           >
-            <Ionicons name="image-outline" size={22} color="#111" />
-            <Text style={styles.quickTxt}>Change Photo</Text>
+            <Ionicons name="person-outline" size={22} color="#111" />
+            <Text style={styles.quickTxt}>Edit</Text>
           </Pressable>
 
           <Pressable
@@ -393,7 +454,7 @@ export default function ProfilePage({ onOpenManual, onOpenSettings }: Props) {
             onPress={() => setEditingName(true)}
           >
             <Ionicons name="create-outline" size={22} color="#111" />
-            <Text style={styles.quickTxt}>Edit Name</Text>
+            <Text style={styles.quickTxt}>Name</Text>
           </Pressable>
 
           <Pressable
@@ -420,12 +481,46 @@ export default function ProfilePage({ onOpenManual, onOpenSettings }: Props) {
             <Text style={styles.quickTxt}>Settings</Text>
           </Pressable>
 
-          <View style={[styles.quickBtnDisabled, { paddingVertical: BTN_PY }]}>
-            <Ionicons name="calendar-outline" size={22} color="#999" />
-            <Text style={styles.quickTxtDisabled}>Calendar</Text>
-          </View>
+          <Pressable
+            style={[styles.quickBtn, { paddingVertical: BTN_PY }]}
+            onPress={sendFeedbackEmail}
+          >
+            <Ionicons name="mail-outline" size={22} color="#111" />
+            <Text style={styles.quickTxt}>Feedback</Text>
+          </Pressable>
         </View>
       </View>
+
+      {/* NEW: NEWSLETTER SECTION */}
+      <View
+        style={[
+          styles.card,
+          { padding: PAD, borderRadius: CARD_R, marginBottom: 0 },
+        ]}
+      >
+        <Text
+          style={[styles.cardTitle, { fontSize: isUltraCompact ? 17 : 18 }]}
+        >
+          Newsletter
+        </Text>
+        <Text style={{ color: "#666", marginTop: 6, marginBottom: 10 }}>
+          Get occasional tips and updates. Unsubscribe anytime.
+        </Text>
+        <Pressable
+          style={styles.primaryBtn}
+          onPress={() => setNewsletterOpen(true)}
+          accessibilityLabel="Subscribe to newsletter"
+        >
+          <Text style={styles.primaryBtnText}>Subscribe to Newsletter</Text>
+        </Pressable>
+      </View>
+
+      <Pressable style={styles.primaryBtn} onPress={openInstagram}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <Ionicons name="logo-instagram" size={18} color="#fff" />
+          <Text style={styles.primaryBtnText}>Follow on Instagram</Text>
+        </View>
+      </Pressable>
 
       {/* Title Picker Modal */}
       <Modal
@@ -511,6 +606,57 @@ export default function ProfilePage({ onOpenManual, onOpenSettings }: Props) {
           </View>
         </View>
       </Modal>
+
+      {/* Newsletter Modal */}
+      <Modal
+        visible={newsletterOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setNewsletterOpen(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: 8,
+              }}
+            >
+              <Text style={styles.modalTitle}>Subscribe</Text>
+              <Pressable
+                onPress={() => setNewsletterOpen(false)}
+                accessibilityLabel="Close"
+                style={styles.closeBtn}
+              >
+                <Ionicons name="close" size={22} color="#111" />
+              </Pressable>
+            </View>
+
+            <Text style={styles.modalHint}>
+              Thank you! Please enter your email and we’ll open your mail app to
+              send us a signup request.
+            </Text>
+
+            <TextInput
+              style={styles.input}
+              value={newsletterEmail}
+              onChangeText={setNewsletterEmail}
+              placeholder="you@example.com"
+              autoCapitalize="none"
+              keyboardType="email-address"
+              returnKeyType="send"
+              onSubmitEditing={submitNewsletter}
+              accessibilityLabel="Email address"
+            />
+
+            <Pressable style={styles.primaryBtn} onPress={submitNewsletter}>
+              <Text style={styles.primaryBtnText}>Subscribe</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -518,7 +664,6 @@ export default function ProfilePage({ onOpenManual, onOpenSettings }: Props) {
 const styles = StyleSheet.create({
   page: {
     flex: 1,
-    backgroundColor: "#fafafa",
   },
 
   // HERO
@@ -570,11 +715,16 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   input: {
-    flex: 1,
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    borderWidth: StyleSheet.hairlineWidth,
+    width: "85%",
+    backgroundColor: "#f9f9f9", // light neutral background (not harsh)
+    borderRadius: 10,
+    borderWidth: 1,
     borderColor: "#ddd",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    fontSize: 15,
+    color: "#111",
+    marginBottom: 12,
   },
   titleRow: {
     width: "100%",
@@ -587,7 +737,6 @@ const styles = StyleSheet.create({
   titleIconBtn: {
     padding: 6,
     borderRadius: 8,
-    // keep it subtle; no bg needed, but uncomment if you want a chip feel:
     backgroundColor: "#f2f2f2",
   },
   titleText: {
@@ -617,6 +766,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: 2,
+  },
+  inputInline: {
+    marginBottom: 0, // 👈 prevents pushing the button down
+    height: 44, // 👈 set a stable control height
+    textAlignVertical: "center", // Android vertical centering
+    flexGrow: 1, // take available width next to the button
   },
   statValue: {
     fontWeight: "800",
@@ -752,10 +907,20 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingVertical: 10,
     marginTop: 16,
+    alignSelf: "stretch",
   },
   primaryBtnText: {
     color: "#fff",
     fontWeight: "700",
     fontSize: 15,
   },
+  closeBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#f2f2f2",
+  },
+  modalHint: { fontSize: 13, color: "#666", marginBottom: 10 },
 });
