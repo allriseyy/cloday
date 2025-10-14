@@ -1,23 +1,23 @@
 // index.tsx
-import React, { useEffect, useState, useRef } from "react";
+import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as ImagePicker from "expo-image-picker";
+import { LinearGradient } from "expo-linear-gradient";
+import React, { useEffect, useRef, useState } from "react";
 import {
-  View,
-  Text,
-  Image,
-  StyleSheet,
   Alert,
-  Pressable,
+  Image,
   Modal,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
 } from "react-native";
 import { Calendar } from "react-native-calendars";
-import * as ImagePicker from "expo-image-picker";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Ionicons } from "@expo/vector-icons";
-import ProfilePage from "./ProfilePage";
-import { LinearGradient } from "expo-linear-gradient";
-import SwipeableImage from "./SwipeableImage";
 import { TapGestureHandler } from "react-native-gesture-handler";
+import ProfilePage from "./ProfilePage";
 import Settings from "./Settings";
+import SwipeableImage from "./SwipeableImage";
 import UserManual from "./UserManual";
 
 type ImageMap = Record<string, string>;
@@ -119,7 +119,10 @@ export default function StoriesArchive() {
     }
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert("Permission required", "Camera access is needed.");
+      Alert.alert(
+        "Permission denied",
+        "The app needs access to your photos to save images you capture."
+      );
       return;
     }
     const result = await ImagePicker.launchCameraAsync({ quality: 1 });

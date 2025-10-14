@@ -1,23 +1,23 @@
 // ProfilePage.tsx
+import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as ImagePicker from "expo-image-picker";
 import React, { useEffect, useMemo, useState } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
-  TextInput,
-  Pressable,
-  Image,
   Alert,
-  Modal,
   FlatList,
-  useWindowDimensions,
-  Platform,
-  ScrollView,
+  Image,
   Linking,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  useWindowDimensions,
+  View,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import * as ImagePicker from "expo-image-picker";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 
 type Props = {
   onOpenManual: () => void;
@@ -109,7 +109,10 @@ export default function ProfilePage({ onOpenManual, onOpenSettings }: Props) {
   const pickProfileImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert("Permission needed", "We need access to your photos.");
+      Alert.alert(
+        "Permission needed",
+        "The app needs access to your photos to let you upload and share pictures from your gallery."
+      );
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({

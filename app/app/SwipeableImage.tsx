@@ -1,7 +1,7 @@
-import React from "react";
-import { View, Text, Image, Pressable, StyleSheet, Alert } from "react-native";
-import { Swipeable } from "react-native-gesture-handler";
 import * as MediaLibrary from "expo-media-library";
+import React from "react";
+import { Alert, Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { Swipeable } from "react-native-gesture-handler";
 
 type Props = {
   uri: string;
@@ -81,7 +81,10 @@ export default function SwipeableImage({
               await MediaLibrary.saveToLibraryAsync(uri);
               Alert.alert("Saved", "Image saved to your gallery 🎉");
             } else {
-              Alert.alert("Permission denied", "Enable access to save images.");
+              Alert.alert(
+                "Permission denied",
+                "The app needs access to your photos to save images you capture."
+              );
             }
             swipeableRef.current?.close();
           },
