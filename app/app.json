@@ -13,8 +13,8 @@
       "bundleIdentifier": "com.allriseyy.cloday",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "NSCameraUsageDescription": "This app needs access to the camera to let you take photos for your archive.",
-        "NSPhotoLibraryAddUsageDescription": "This app needs access to save photos to your library."
+        "NSCameraUsageDescription": "Cloday uses your camera to let you take photos of your outfits and add them to your personal wardrobe archive.",
+        "NSPhotoLibraryAddUsageDescription": "Cloday uses your photo library to save outfit photos you create, so you can view and manage them later in your wardrobe collection."
       }
     },
     "android": {
