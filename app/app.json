@@ -10,7 +10,7 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.allriseyy.cloday",
+      "bundleIdentifier": "com.allriseyy.app",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSCameraUsageDescription": "Cloday uses your camera to let you take photos of your outfits and add them to your personal wardrobe archive.",
