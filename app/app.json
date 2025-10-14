@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Cloday",
-    "slug": "cloday",
+    "slug": "app",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.jpg",
@@ -55,6 +55,7 @@
       "eas": {
         "projectId": "083895dd-7d57-430f-a262-66da129a2203"
       }
-    }
+    },
+    "owner": "allriseyy"
   }
 }
