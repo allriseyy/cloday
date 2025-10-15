@@ -9,11 +9,12 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "com.allriseyy.app",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSCameraUsageDescription": "Cloday uses your camera to let you take photos of your outfits and add them to your personal wardrobe archive.",
+        "NSPhotoLibraryUsageDescription": "Cloday uses your photo library so you can select outfit photos to upload and manage them in your wardrobe collection.",
         "NSPhotoLibraryAddUsageDescription": "Cloday uses your photo library to save outfit photos you create, so you can view and manage them later in your wardrobe collection."
       }
     },

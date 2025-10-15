@@ -1,17 +1,20 @@
 // app/_layout.tsx
+import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
-import { View, Text } from "react-native";
+import React from "react";
+import { Image, Text, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 function MyHeader() {
-  const insets = useSafeAreaInsets(); // gives top inset for notch / dynamic island
+  const insets = useSafeAreaInsets();
+  const loadingIcon = require("../assets/images/loading.png"); // ensure this path exists
 
   return (
     <View
       style={{
-        paddingTop: insets.top, // 👈 push below dynamic island/notch
-        height: insets.top + 40, // header height + safe area
+        paddingTop: insets.top,
+        height: insets.top + 40,
         backgroundColor: "#fff",
         alignItems: "center",
         justifyContent: "center",
@@ -19,12 +22,33 @@ function MyHeader() {
         borderBottomColor: "#ddd",
       }}
     >
-      <Text style={{ fontSize: 20 }}>Cloday</Text>
+      <View style={{ flexDirection: "row", alignItems: "center" }}>
+        <Image
+          source={loadingIcon}
+          style={{
+            width: 30,
+            height: 50,
+            resizeMode: "center",
+            paddingRight: 0,
+            marginRight: 0,
+          }}
+        />
+        <Text style={{ fontFamily: "ImperialScriptRegular", fontSize: 25 }}>
+          Cloday
+        </Text>
+      </View>
     </View>
   );
 }
 
 export default function RootLayout() {
+  const [fontsLoaded] = useFonts({
+    ImperialScriptRegular: require("../assets/fonts/ImperialScript-Regular.ttf"),
+  });
+
+  if (!fontsLoaded) {
+    return null; // or a splash/loading component
+  }
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <Stack>
