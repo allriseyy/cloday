@@ -24,15 +24,25 @@ type ImageMap = Record<string, string>;
 type Screen = "home" | "profile" | "manual" | "settings";
 
 const toISO = (d: Date) => d.toISOString().split("T")[0];
-const countOutfitDays = (map: ImageMap) => Object.keys(map).length;
 const addDays = (iso: string, delta: number) => {
   const d = new Date(iso);
   d.setDate(d.getDate() + delta);
   return toISO(d);
 };
+const diffDays = (aISO: string, bISO: string) =>
+  Math.floor((Date.parse(aISO) - Date.parse(bISO)) / 86400000);
+
+// ---- edit-window helpers (last 7 days incl today) ----
+const todayISO = () => toISO(new Date());
+const isFuture = (iso: string) => Date.parse(iso) > Date.parse(todayISO());
+const isEditable = (iso: string) => {
+  const d = diffDays(todayISO(), iso); // positive if iso <= today
+  // editable when iso is today (0) down to 6 days ago
+  return d >= 0 && d <= 6;
+};
 
 export default function StoriesArchive() {
-  const [selectedDate, setSelectedDate] = useState<string>("null");
+  const [selectedDate, setSelectedDate] = useState<string>(todayISO());
   const [images, setImages] = useState<ImageMap>({});
   const [currentScreen, setCurrentScreen] = useState<Screen>("home");
 
@@ -40,75 +50,29 @@ export default function StoriesArchive() {
   const [modalVisible, setModalVisible] = useState(false);
   const [modalUri, setModalUri] = useState<string | null>(null);
 
-  // Clear everything (all days)
-  const clearAllImages = () => {
-    Alert.alert(
-      "Clear all outfits?",
-      "This will remove all saved outfits (red dots) for every day.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete all",
-          style: "destructive",
-          onPress: async () => {
-            // Clear state
-            setImages({});
-
-            // Storage: remove all images and reset count
-            await AsyncStorage.removeItem("dateImages");
-            await AsyncStorage.setItem("outfitCount", "0");
-
-            // Optional: also reset the “last seen tier” so titles re-open on next unlock
-            // await AsyncStorage.setItem("titleLastSeenTier", "0");
-
-            Alert.alert("Done", "All outfits have been cleared.");
-          },
-        },
-      ]
-    );
-  };
-
   // Theming (background colour)
   const [bgColor, setBgColor] = useState<string>("#fff");
 
-  useEffect(() => {
-    const today = new Date().toISOString().split("T")[0];
-    setSelectedDate(today);
-  }, []);
-
+  // load persisted data
   useEffect(() => {
     (async () => {
       const raw = await AsyncStorage.getItem("dateImages");
       if (raw) setImages(JSON.parse(raw));
-      if (raw) {
-        const parsed: ImageMap = JSON.parse(raw);
-        setImages(parsed);
 
-        // 🔵 NEW: write initial outfitCount based on loaded data
-        const initialCount = countOutfitDays(parsed);
-        await AsyncStorage.setItem("outfitCount", String(initialCount));
-      }
-
-      // ensure install date saved once
       const existingInstall = await AsyncStorage.getItem("installDate");
       if (!existingInstall) {
         await AsyncStorage.setItem("installDate", new Date().toISOString());
       }
 
-      // load bg color
       const storedBg = await AsyncStorage.getItem("bgColor");
       if (storedBg) setBgColor(storedBg);
     })();
   }, []);
 
+  // persist changes
   useEffect(() => {
     (async () => {
-      // persist the images map
       await AsyncStorage.setItem("dateImages", JSON.stringify(images));
-
-      // 🔵 NEW: update outfitCount every time images change
-      const count = countOutfitDays(images);
-      await AsyncStorage.setItem("outfitCount", String(count));
     })();
   }, [images]);
 
@@ -117,18 +81,31 @@ export default function StoriesArchive() {
       Alert.alert("Pick a date first");
       return;
     }
+    if (!isEditable(selectedDate)) {
+      if (isFuture(selectedDate)) {
+        Alert.alert("Not allowed", "You can’t add photos to future dates.");
+      } else {
+        Alert.alert(
+          "View-only",
+          "You can view older days, but adding or deleting photos is limited to the last 7 days."
+        );
+      }
+      return;
+    }
+
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== "granted") {
       Alert.alert(
         "Permission denied",
-        "The app needs access to your photos to save images you capture."
+        "The app needs camera access to take a photo."
       );
       return;
     }
+
     const result = await ImagePicker.launchCameraAsync({ quality: 1 });
     if (!result.canceled) {
       const originalUri = result.assets?.[0]?.uri;
-      if (originalUri && selectedDate) {
+      if (originalUri) {
         const next = { ...images, [selectedDate]: originalUri };
         setImages(next);
         await AsyncStorage.setItem("dateImages", JSON.stringify(next));
@@ -150,9 +127,39 @@ export default function StoriesArchive() {
   const singleTapRef = useRef<TapGestureHandler>(null);
   const [previewWidth, setPreviewWidth] = useState(0);
 
-  const goToday = () => setSelectedDate(toISO(new Date()));
+  const goToday = () => setSelectedDate(todayISO());
   const goPrevDay = () => setSelectedDate(addDays(selectedDate, -1));
-  const goNextDay = () => setSelectedDate(addDays(selectedDate, 1));
+  const goNextDay = () => {
+    // don’t navigate into the future
+    const next = addDays(selectedDate, 1);
+    if (!isFuture(next)) setSelectedDate(next);
+  };
+
+  const canEdit = isEditable(selectedDate);
+  const isSelectedFuture = isFuture(selectedDate);
+
+  // build markedDates
+  const marked: any = {
+    ...Object.fromEntries(
+      Object.keys(images).map((date) => [
+        date,
+        {
+          selected: true,
+          selectedColor: "#ff0000ff",
+          selectedTextColor: "white",
+        },
+      ])
+    ),
+    ...(selectedDate
+      ? {
+          [selectedDate]: {
+            selected: true,
+            selectedColor: "black",
+            selectedTextColor: "white",
+          },
+        }
+      : {}),
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: bgColor }]}>
@@ -166,29 +173,18 @@ export default function StoriesArchive() {
           >
             <Calendar
               style={styles.calendarCard}
-              onDayPress={(d) => setSelectedDate(d.dateString)}
-              enableSwipeMonths={true}
-              markedDates={{
-                ...Object.fromEntries(
-                  Object.keys(images).map((date) => [
-                    date,
-                    {
-                      selected: true,
-                      selectedColor: "#ff0000ff",
-                      selectedTextColor: "white",
-                    },
-                  ])
-                ),
-                ...(selectedDate
-                  ? {
-                      [selectedDate]: {
-                        selected: true,
-                        selectedColor: "black",
-                        selectedTextColor: "white",
-                      },
-                    }
-                  : {}),
+              onDayPress={(d) => {
+                // don’t allow selecting into the future
+                if (isFuture(d.dateString)) {
+                  Alert.alert("Future day", "You can’t select future dates.");
+                  return;
+                }
+                setSelectedDate(d.dateString);
               }}
+              enableSwipeMonths={true}
+              // prevent calendar arrows from moving selection past today
+              maxDate={todayISO()}
+              markedDates={marked}
               theme={{
                 calendarBackground: "transparent",
                 textSectionTitleColor: "#333",
@@ -199,13 +195,6 @@ export default function StoriesArchive() {
               }}
             />
           </LinearGradient>
-          {/* DEV: Clear-all button */}
-          {/* {__DEV__ && (
-            <Pressable style={styles.devBtn} onPress={clearAllImages}>
-              <Ionicons name="trash-outline" size={16} color="#111" />
-              <Text style={{ fontWeight: "600" }}>DEV: Clear all outfits</Text>
-            </Pressable>
-          )} */}
 
           {selectedDate && (
             <TapGestureHandler
@@ -223,7 +212,7 @@ export default function StoriesArchive() {
                   if (x < previewWidth / 2) {
                     goPrevDay();
                   } else {
-                    goNextDay();
+                    goNextDay(); // guarded from future
                   }
                 }}
               >
@@ -239,6 +228,13 @@ export default function StoriesArchive() {
                       date={selectedDate}
                       onPress={(uri) => openImageModal(uri)}
                       onDelete={(date) => {
+                        if (!isEditable(date)) {
+                          Alert.alert(
+                            "View-only",
+                            "Deleting is limited to the last 7 days."
+                          );
+                          return;
+                        }
                         const updated = { ...images };
                         delete updated[date];
                         setImages(updated);
@@ -250,6 +246,13 @@ export default function StoriesArchive() {
                     />
                   ) : (
                     <Text style={styles.nothing}>Nothing here !</Text>
+                  )}
+                  {!canEdit && (
+                    <Text style={{ marginTop: 10, fontSize: 10, color: "#666" }}>
+                      {isSelectedFuture
+                        ? "Future dates are not editable."
+                        : "That day’s ancient history! Just for viewing now 👀"}
+                    </Text>
                   )}
                 </View>
               </TapGestureHandler>
@@ -307,9 +310,13 @@ export default function StoriesArchive() {
         </Pressable>
       </View>
 
-      {/* Floating camera (home only) */}
+      {/* Floating camera (home only); disabled when view-only */}
       {currentScreen === "home" && (
-        <Pressable style={styles.cameraButton} onPress={takePicture}>
+        <Pressable
+          style={[styles.cameraButton, !canEdit && { opacity: 0.4 }]}
+          disabled={!canEdit}
+          onPress={takePicture}
+        >
           <Ionicons name="camera" size={28} color="#fff" />
         </Pressable>
       )}
