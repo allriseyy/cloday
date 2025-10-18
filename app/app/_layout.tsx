@@ -2,13 +2,12 @@
 import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import React from "react";
-import { Image, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 function MyHeader() {
   const insets = useSafeAreaInsets();
-  const loadingIcon = require("../assets/images/loading.png"); // ensure this path exists
 
   return (
     <View
@@ -23,16 +22,6 @@ function MyHeader() {
       }}
     >
       <View style={{ flexDirection: "row", alignItems: "center" }}>
-        <Image
-          source={loadingIcon}
-          style={{
-            width: 30,
-            height: 50,
-            resizeMode: "center",
-            paddingRight: 0,
-            marginRight: 0,
-          }}
-        />
         <Text style={{ fontFamily: "ImperialScriptRegular", fontSize: 25 }}>
           Cloday
         </Text>
@@ -47,15 +36,16 @@ export default function RootLayout() {
   });
 
   if (!fontsLoaded) {
-    return null; // or a splash/loading component
+    return null;
   }
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <Stack>
         <Stack.Screen
           name="index"
           options={{
-            header: () => <MyHeader />, // custom header replaces default
+            header: () => <MyHeader />,
           }}
         />
       </Stack>
