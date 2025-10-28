@@ -22,7 +22,7 @@ function MyHeader() {
       }}
     >
       <View style={{ flexDirection: "row", alignItems: "center" }}>
-        <Text style={{ fontFamily: "ImperialScriptRegular", fontSize: 25 }}>
+        <Text style={{ fontFamily: "CaveatBrushRegular", fontSize: 25 }}>
           Cloday
         </Text>
       </View>
@@ -32,7 +32,7 @@ function MyHeader() {
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
-    ImperialScriptRegular: require("../assets/fonts/ImperialScript-Regular.ttf"),
+    CaveatBrushRegular: require("../assets/fonts/CaveatBrush-Regular.ttf"),
   });
 
   if (!fontsLoaded) {
