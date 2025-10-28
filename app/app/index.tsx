@@ -2,6 +2,8 @@
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
+// 👇 use legacy FS to silence SDK 54 deprecation warnings
+import * as FileSystem from "expo-file-system/legacy";
 import { LinearGradient } from "expo-linear-gradient";
 import React, { useEffect, useRef, useState } from "react";
 import {
@@ -36,10 +38,66 @@ const diffDays = (aISO: string, bISO: string) =>
 const todayISO = () => toISO(new Date());
 const isFuture = (iso: string) => Date.parse(iso) > Date.parse(todayISO());
 const isEditable = (iso: string) => {
-  const d = diffDays(todayISO(), iso); // positive if iso <= today
-  // editable when iso is today (0) down to 6 days ago
+  const d = diffDays(todayISO(), iso);
   return d >= 0 && d <= 6;
 };
+
+// ---- Persistent storage folder (survives app updates; wiped on uninstall) ----
+const APP_DIR = FileSystem.documentDirectory + "stories/";
+
+async function ensureAppDir() {
+  try {
+    const info = await FileSystem.getInfoAsync(APP_DIR);
+    if (!info.exists) {
+      await FileSystem.makeDirectoryAsync(APP_DIR, { intermediates: true });
+    }
+  } catch (e) {
+    console.warn("Failed to ensure app dir", e);
+  }
+}
+
+function extFromUri(uri: string) {
+  const clean = uri.split("?")[0];
+  const parts = clean.split(".");
+  const ext = parts.length > 1 ? parts.pop() : undefined;
+  if (!ext || ext.length > 5) return "jpg";
+  return ext.toLowerCase();
+}
+
+/** Copy the captured photo into a stable app location and return its file:// URI */
+async function saveImageToAppStorage(sourceUri: string, dateISO: string) {
+  await ensureAppDir();
+  const ext = extFromUri(sourceUri);
+  const dest = `${APP_DIR}${dateISO}.${ext}`;
+
+  try {
+    const existing = await FileSystem.getInfoAsync(dest);
+    if (existing.exists) {
+      await FileSystem.deleteAsync(dest, { idempotent: true });
+    }
+  } catch {}
+  await FileSystem.copyAsync({ from: sourceUri, to: dest });
+  return dest;
+}
+
+/** Drop any broken file refs (e.g., if old cache URIs were stored) */
+async function validateStoredImages(map: ImageMap): Promise<ImageMap> {
+  const entries = await Promise.all(
+    Object.entries(map).map(async ([date, uri]) => {
+      try {
+        const info = await FileSystem.getInfoAsync(uri);
+        return info.exists ? [date, uri] : null;
+      } catch {
+        return null;
+      }
+    })
+  );
+  const cleaned: ImageMap = {};
+  for (const e of entries) {
+    if (e) cleaned[e[0]] = e[1];
+  }
+  return cleaned;
+}
 
 export default function StoriesArchive() {
   const [selectedDate, setSelectedDate] = useState<string>(todayISO());
@@ -56,8 +114,17 @@ export default function StoriesArchive() {
   // load persisted data
   useEffect(() => {
     (async () => {
+      await ensureAppDir();
+
       const raw = await AsyncStorage.getItem("dateImages");
-      if (raw) setImages(JSON.parse(raw));
+      if (raw) {
+        const parsed: ImageMap = JSON.parse(raw);
+        const cleaned = await validateStoredImages(parsed);
+        setImages(cleaned);
+        if (JSON.stringify(cleaned) !== raw) {
+          await AsyncStorage.setItem("dateImages", JSON.stringify(cleaned));
+        }
+      }
 
       const existingInstall = await AsyncStorage.getItem("installDate");
       if (!existingInstall) {
@@ -106,9 +173,15 @@ export default function StoriesArchive() {
     if (!result.canceled) {
       const originalUri = result.assets?.[0]?.uri;
       if (originalUri) {
-        const next = { ...images, [selectedDate]: originalUri };
-        setImages(next);
-        await AsyncStorage.setItem("dateImages", JSON.stringify(next));
+        try {
+          const stableUri = await saveImageToAppStorage(originalUri, selectedDate);
+          const next = { ...images, [selectedDate]: stableUri };
+          setImages(next);
+          await AsyncStorage.setItem("dateImages", JSON.stringify(next));
+        } catch (e) {
+          console.warn("Failed to save image to app storage:", e);
+          Alert.alert("Save failed", "Couldn’t persist the photo. Please try again.");
+        }
       }
     }
   };
@@ -130,7 +203,6 @@ export default function StoriesArchive() {
   const goToday = () => setSelectedDate(todayISO());
   const goPrevDay = () => setSelectedDate(addDays(selectedDate, -1));
   const goNextDay = () => {
-    // don’t navigate into the future
     const next = addDays(selectedDate, 1);
     if (!isFuture(next)) setSelectedDate(next);
   };
@@ -174,7 +246,6 @@ export default function StoriesArchive() {
             <Calendar
               style={styles.calendarCard}
               onDayPress={(d) => {
-                // don’t allow selecting into the future
                 if (isFuture(d.dateString)) {
                   Alert.alert("Future day", "You can’t select future dates.");
                   return;
@@ -182,7 +253,6 @@ export default function StoriesArchive() {
                 setSelectedDate(d.dateString);
               }}
               enableSwipeMonths={true}
-              // prevent calendar arrows from moving selection past today
               maxDate={todayISO()}
               markedDates={marked}
               theme={{
@@ -212,22 +282,20 @@ export default function StoriesArchive() {
                   if (x < previewWidth / 2) {
                     goPrevDay();
                   } else {
-                    goNextDay(); // guarded from future
+                    goNextDay();
                   }
                 }}
               >
                 <View
                   style={styles.preview}
-                  onLayout={(ev) =>
-                    setPreviewWidth(ev.nativeEvent.layout.width)
-                  }
+                  onLayout={(ev) => setPreviewWidth(ev.nativeEvent.layout.width)}
                 >
                   {images[selectedDate] ? (
                     <SwipeableImage
                       uri={images[selectedDate]!}
                       date={selectedDate}
                       onPress={(uri) => openImageModal(uri)}
-                      onDelete={(date) => {
+                      onDelete={async (date) => {
                         if (!isEditable(date)) {
                           Alert.alert(
                             "View-only",
@@ -235,13 +303,19 @@ export default function StoriesArchive() {
                           );
                           return;
                         }
+                        const uri = images[date];
                         const updated = { ...images };
                         delete updated[date];
                         setImages(updated);
-                        AsyncStorage.setItem(
+                        await AsyncStorage.setItem(
                           "dateImages",
                           JSON.stringify(updated)
                         );
+                        if (uri && uri.startsWith(APP_DIR)) {
+                          try {
+                            await FileSystem.deleteAsync(uri, { idempotent: true });
+                          } catch {}
+                        }
                       }}
                     />
                   ) : (
@@ -285,10 +359,7 @@ export default function StoriesArchive() {
 
       {/* Bottom bar */}
       <View style={styles.bottomBar}>
-        <Pressable
-          style={styles.tabItem}
-          onPress={() => setCurrentScreen("home")}
-        >
+        <Pressable style={styles.tabItem} onPress={() => setCurrentScreen("home")}>
           <Ionicons
             name={currentScreen === "home" ? "home" : "home-outline"}
             size={26}
