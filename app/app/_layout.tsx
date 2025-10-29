@@ -22,7 +22,7 @@ function MyHeader() {
       }}
     >
       <View style={{ flexDirection: "row", alignItems: "center" }}>
-        <Text style={{ fontFamily: "CaveatBrushRegular", fontSize: 25 }}>
+        <Text style={{ fontFamily: "CaveatBrushRegular", fontSize: 22 }}>
           Cloday
         </Text>
       </View>

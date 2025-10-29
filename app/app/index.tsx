@@ -14,6 +14,9 @@ import {
   StyleSheet,
   Text,
   View,
+  Animated,
+  Easing,
+  LayoutChangeEvent,
 } from "react-native";
 import { Calendar } from "react-native-calendars";
 import { TapGestureHandler } from "react-native-gesture-handler";
@@ -99,10 +102,19 @@ async function validateStoredImages(map: ImageMap): Promise<ImageMap> {
   return cleaned;
 }
 
+// Helper to map tab -> numeric index for animation
+const tabIndex = (s: Screen) => (s === "profile" ? 1 : 0);
+
 export default function StoriesArchive() {
   const [selectedDate, setSelectedDate] = useState<string>(todayISO());
   const [images, setImages] = useState<ImageMap>({});
   const [currentScreen, setCurrentScreen] = useState<Screen>("home");
+
+  // 🔹 Track which tab we’re animating between (home/profile only)
+  const [activeTab, setActiveTab] = useState<"home" | "profile">("home");
+  const anim = useRef(new Animated.Value(0)).current; // 0 = home, 1 = profile
+  const [isTabTransitioning, setIsTabTransitioning] = useState(false);
+  const [contentWidth, setContentWidth] = useState(0);
 
   // Image modal
   const [modalVisible, setModalVisible] = useState(false);
@@ -233,115 +245,211 @@ export default function StoriesArchive() {
       : {}),
   };
 
-  return (
-    <View style={[styles.container, { backgroundColor: bgColor }]}>
-      {currentScreen === "home" && (
-        <>
-          <LinearGradient
-            colors={["#f5f7ff", "#e6ecff"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.calendarWrapper}
-          >
-            <Calendar
-              style={styles.calendarCard}
-              onDayPress={(d) => {
-                if (isFuture(d.dateString)) {
-                  Alert.alert("Future day", "You can’t select future dates.");
-                  return;
-                }
-                setSelectedDate(d.dateString);
-              }}
-              enableSwipeMonths={true}
-              maxDate={todayISO()}
-              markedDates={marked}
-              theme={{
-                calendarBackground: "transparent",
-                textSectionTitleColor: "#333",
-                dayTextColor: "#111",
-                monthTextColor: "#111",
-                arrowColor: "#111",
-                selectedDayBackgroundColor: "transparent",
-              }}
-            />
-          </LinearGradient>
+  // 🔹 Smooth tab transition (home <-> profile)
+  const switchTab = (to: "home" | "profile") => {
+    if (currentScreen === "manual" || currentScreen === "settings") {
+      setCurrentScreen(to);
+      setActiveTab(to);
+      Animated.timing(anim, {
+        toValue: tabIndex(to),
+        duration: 0,
+        useNativeDriver: true,
+      }).start();
+      return;
+    }
 
-          {selectedDate && (
-            <TapGestureHandler
-              ref={doubleTapRef}
-              numberOfTaps={2}
-              onActivated={goToday}
+    if (activeTab === to || isTabTransitioning) return;
+
+    setIsTabTransitioning(true);
+    const toVal = tabIndex(to);
+    Animated.timing(anim, {
+      toValue: toVal,
+      duration: 340,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start(() => {
+      setActiveTab(to);
+      setCurrentScreen(to);
+      setIsTabTransitioning(false);
+    });
+  };
+
+  const onContentLayout = (e: LayoutChangeEvent) => {
+    const w = e.nativeEvent.layout.width;
+    if (w !== contentWidth) setContentWidth(w);
+  };
+
+  // Interpolations for pages
+  const slideHome = anim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -contentWidth],
+  });
+  const slideProfile = anim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [contentWidth, 0],
+  });
+  const fadeOut = anim.interpolate({ inputRange: [0, 1], outputRange: [1, 0.95] });
+  const fadeIn = anim.interpolate({ inputRange: [0, 1], outputRange: [0.95, 1] });
+  const scaleOut = anim.interpolate({ inputRange: [0, 1], outputRange: [1, 0.98] });
+  const scaleIn = anim.interpolate({ inputRange: [0, 1], outputRange: [1.02, 1] });
+
+  // 🔹 Camera "pop & slide down" when going Home → Profile (and back up on Profile → Home)
+  const camTranslateY = anim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 56], // slide down by ~56px
+  });
+  const camScale = anim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1, 0.88], // slight shrink as it slides down
+  });
+  const camOpacity = anim.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [1, 0.4, 0], // fade out
+  });
+
+  const isTabView = currentScreen === "home" || currentScreen === "profile";
+
+  return (
+    <View style={[styles.container, { backgroundColor: bgColor }]} onLayout={onContentLayout}>
+      {/* -------- Animated Tab Area (Home/Profile) -------- */}
+      {isTabView && (
+        <View style={{ flex: 1 }}>
+          <View style={{ flex: 1, overflow: "hidden" }}>
+            {/* Home */}
+            <Animated.View
+              pointerEvents={activeTab === "profile" ? "none" : "auto"}
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                transform: [{ translateX: slideHome }, { scale: scaleOut }],
+                opacity: fadeOut,
+              }}
             >
-              <TapGestureHandler
-                ref={singleTapRef}
-                waitFor={doubleTapRef}
-                numberOfTaps={1}
-                onActivated={(e) => {
-                  const x = e.nativeEvent.x;
-                  if (previewWidth === 0) return;
-                  if (x < previewWidth / 2) {
-                    goPrevDay();
-                  } else {
-                    goNextDay();
-                  }
-                }}
-              >
-                <View
-                  style={styles.preview}
-                  onLayout={(ev) => setPreviewWidth(ev.nativeEvent.layout.width)}
+              <>
+                <LinearGradient
+                  colors={["#f5f7ff", "#e6ecff"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.calendarWrapper}
                 >
-                  {images[selectedDate] ? (
-                    <SwipeableImage
-                      uri={images[selectedDate]!}
-                      date={selectedDate}
-                      onPress={(uri) => openImageModal(uri)}
-                      onDelete={async (date) => {
-                        if (!isEditable(date)) {
-                          Alert.alert(
-                            "View-only",
-                            "Deleting is limited to the last 7 days."
-                          );
-                          return;
-                        }
-                        const uri = images[date];
-                        const updated = { ...images };
-                        delete updated[date];
-                        setImages(updated);
-                        await AsyncStorage.setItem(
-                          "dateImages",
-                          JSON.stringify(updated)
-                        );
-                        if (uri && uri.startsWith(APP_DIR)) {
-                          try {
-                            await FileSystem.deleteAsync(uri, { idempotent: true });
-                          } catch {}
+                  <Calendar
+                    style={styles.calendarCard}
+                    onDayPress={(d) => {
+                      if (isFuture(d.dateString)) {
+                        Alert.alert("Future day", "You can’t select future dates.");
+                        return;
+                      }
+                      setSelectedDate(d.dateString);
+                    }}
+                    enableSwipeMonths={true}
+                    maxDate={todayISO()}
+                    markedDates={marked}
+                    theme={{
+                      calendarBackground: "transparent",
+                      textSectionTitleColor: "#333",
+                      dayTextColor: "#111",
+                      monthTextColor: "#111",
+                      arrowColor: "#111",
+                      selectedDayBackgroundColor: "transparent",
+                    }}
+                  />
+                </LinearGradient>
+
+                {selectedDate && (
+                  <TapGestureHandler
+                    ref={doubleTapRef}
+                    numberOfTaps={2}
+                    onActivated={goToday}
+                  >
+                    <TapGestureHandler
+                      ref={singleTapRef}
+                      waitFor={doubleTapRef}
+                      numberOfTaps={1}
+                      onActivated={(e) => {
+                        const x = e.nativeEvent.x;
+                        if (previewWidth === 0) return;
+                        if (x < previewWidth / 2) {
+                          goPrevDay();
+                        } else {
+                          goNextDay();
                         }
                       }}
-                    />
-                  ) : (
-                    <Text style={styles.nothing}>Nothing here !</Text>
-                  )}
-                  {!canEdit && (
-                    <Text style={{ marginTop: 10, fontSize: 10, color: "#666" }}>
-                      {isSelectedFuture
-                        ? "Future dates are not editable."
-                        : "That day’s ancient history! Just for viewing now 👀"}
-                    </Text>
-                  )}
-                </View>
-              </TapGestureHandler>
-            </TapGestureHandler>
-          )}
-        </>
+                    >
+                      <View
+                        style={styles.preview}
+                        onLayout={(ev) => setPreviewWidth(ev.nativeEvent.layout.width)}
+                      >
+                        {images[selectedDate] ? (
+                          <SwipeableImage
+                            uri={images[selectedDate]!}
+                            date={selectedDate}
+                            onPress={(uri) => openImageModal(uri)}
+                            onDelete={async (date) => {
+                              if (!isEditable(date)) {
+                                Alert.alert(
+                                  "View-only",
+                                  "Deleting is limited to the last 7 days."
+                                );
+                                return;
+                              }
+                              const uri = images[date];
+                              const updated = { ...images };
+                              delete updated[date];
+                              setImages(updated);
+                              await AsyncStorage.setItem(
+                                "dateImages",
+                                JSON.stringify(updated)
+                              );
+                              if (uri && uri.startsWith(APP_DIR)) {
+                                try {
+                                  await FileSystem.deleteAsync(uri, { idempotent: true });
+                                } catch {}
+                              }
+                            }}
+                          />
+                        ) : (
+                          <Text style={styles.nothing}>Nothing here !</Text>
+                        )}
+                        {!canEdit && (
+                          <Text style={{ marginTop: 10, fontSize: 10, color: "#666" }}>
+                            {isSelectedFuture
+                              ? "Future dates are not editable."
+                              : "That day’s ancient history! Just for viewing now 👀"}
+                          </Text>
+                        )}
+                      </View>
+                    </TapGestureHandler>
+                  </TapGestureHandler>
+                )}
+              </>
+            </Animated.View>
+
+            {/* Profile */}
+            <Animated.View
+              pointerEvents={activeTab === "home" ? "none" : "auto"}
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                transform: [{ translateX: slideProfile }, { scale: scaleIn }],
+                opacity: fadeIn,
+              }}
+            >
+              <ProfilePage
+                onOpenManual={() => setCurrentScreen("manual")}
+                onOpenSettings={() => setCurrentScreen("settings")}
+              />
+            </Animated.View>
+          </View>
+        </View>
       )}
 
-      {currentScreen === "profile" && (
-        <ProfilePage
-          onOpenManual={() => setCurrentScreen("manual")}
-          onOpenSettings={() => setCurrentScreen("settings")}
-        />
-      )}
-
+      {/* -------- Non-tab pages (no tab animation) -------- */}
       {currentScreen === "manual" && (
         <UserManual onBack={() => setCurrentScreen("profile")} />
       )}
@@ -359,37 +467,49 @@ export default function StoriesArchive() {
 
       {/* Bottom bar */}
       <View style={styles.bottomBar}>
-        <Pressable style={styles.tabItem} onPress={() => setCurrentScreen("home")}>
+        <Pressable
+          style={styles.tabItem}
+          onPress={() => switchTab("home")}
+          accessibilityLabel="Home"
+        >
           <Ionicons
-            name={currentScreen === "home" ? "home" : "home-outline"}
+            name={(activeTab === "home" && isTabView) ? "home" : "home-outline"}
             size={26}
           />
         </Pressable>
 
         <Pressable
           style={styles.tabItem}
-          onPress={() => setCurrentScreen("profile")}
+          onPress={() => switchTab("profile")}
+          accessibilityLabel="Profile"
         >
           <Ionicons
-            name={
-              currentScreen === "profile"
-                ? "person-circle"
-                : "person-circle-outline"
-            }
+            name={(activeTab === "profile" && isTabView) ? "person-circle" : "person-circle-outline"}
             size={26}
           />
         </Pressable>
       </View>
 
-      {/* Floating camera (home only); disabled when view-only */}
-      {currentScreen === "home" && (
-        <Pressable
-          style={[styles.cameraButton, !canEdit && { opacity: 0.4 }]}
-          disabled={!canEdit}
-          onPress={takePicture}
+      {/* 🔹 Animated Floating Camera (visible on tab views; interactive on Home) */}
+      {isTabView && (
+        <Animated.View
+          style={[
+            styles.cameraWrap,
+            {
+              transform: [{ translateY: camTranslateY }, { scale: camScale }],
+              opacity: camOpacity,
+            },
+          ]}
+          pointerEvents={activeTab === "home" && !isTabTransitioning ? "auto" : "none"}
         >
-          <Ionicons name="camera" size={28} color="#fff" />
-        </Pressable>
+          <Pressable
+            style={[styles.cameraButton, !canEdit && { opacity: 0.4 }]}
+            disabled={!canEdit || activeTab !== "home" || isTabTransitioning}
+            onPress={takePicture}
+          >
+            <Ionicons name="camera" size={28} color="#fff" />
+          </Pressable>
+        </Animated.View>
       )}
 
       {/* Image Modal */}
@@ -406,7 +526,7 @@ export default function StoriesArchive() {
             <Ionicons name="close" size={28} color="#fff" />
           </Pressable>
 
-          {modalUri ? (
+        {modalUri ? (
             <Image
               source={{ uri: modalUri }}
               style={styles.modalImage}
@@ -471,10 +591,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  cameraButton: {
+
+  // 🔹 Wrapper holds absolute position for the animated camera
+  cameraWrap: {
     position: "absolute",
     bottom: BAR_HEIGHT / 3,
     alignSelf: "center",
+  },
+
+  // Actual camera button visuals
+  cameraButton: {
     width: 64,
     height: 64,
     borderRadius: 999,
