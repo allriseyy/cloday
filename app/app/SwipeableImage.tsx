@@ -1,7 +1,8 @@
 import * as MediaLibrary from "expo-media-library";
 import React from "react";
-import { Alert, Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { Alert, Image, Pressable, Text, View } from "react-native";
 import { Swipeable } from "react-native-gesture-handler";
+import styles from "../styles/SwipeableImageStyles";
 
 type Props = {
   uri: string;
@@ -126,42 +127,3 @@ export default function SwipeableImage({
     </Swipeable>
   );
 }
-
-const RADIUS = 16;
-
-const styles = StyleSheet.create({
-  swipeContainer: {
-    borderRadius: RADIUS,
-    overflow: "hidden",
-    alignSelf: "center",
-    marginVertical: 12,
-  },
-
-  // Initial pass: render something predictable so we can measure height once
-  imageMeasureOnce: {
-    width: 250, // temporary width just to get a height back
-    aspectRatio: 1, // temporary square to produce a stable measurement
-    borderRadius: RADIUS,
-    overflow: "hidden",
-  },
-
-  // After measurement: keep the same height but use a smaller width
-  imageBase: {
-    borderRadius: RADIUS,
-    overflow: "hidden",
-  },
-
-  // Action panels behind the image
-  actionPanel: {
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  deleteBg: { backgroundColor: "red" },
-  saveBg: { backgroundColor: "green" },
-
-  actionText: {
-    color: "#fff",
-    fontWeight: "bold",
-    fontSize: 40,
-  },
-});

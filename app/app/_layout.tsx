@@ -5,26 +5,20 @@ import React from "react";
 import { Text, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import styles from "../styles/LayoutStyles";
 
 function MyHeader() {
   const insets = useSafeAreaInsets();
 
   return (
     <View
-      style={{
-        paddingTop: insets.top,
-        height: insets.top + 40,
-        backgroundColor: "#fff",
-        alignItems: "center",
-        justifyContent: "center",
-        borderBottomWidth: 0.5,
-        borderBottomColor: "#ddd",
-      }}
+      style={[
+        styles.header,
+        { paddingTop: insets.top, height: insets.top + 40 },
+      ]}
     >
-      <View style={{ flexDirection: "row", alignItems: "center" }}>
-        <Text style={{ fontFamily: "CaveatBrushRegular", fontSize: 22 }}>
-          Cloday
-        </Text>
+      <View style={styles.headerRow}>
+        <Text style={styles.headerText}>Cloday</Text>
       </View>
     </View>
   );
