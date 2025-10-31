@@ -8,15 +8,15 @@ import { LinearGradient } from "expo-linear-gradient";
 import React, { useEffect, useRef, useState } from "react";
 import {
   Alert,
+  Animated,
+  Easing,
   Image,
+  LayoutChangeEvent,
   Modal,
   Pressable,
   StyleSheet,
   Text,
   View,
-  Animated,
-  Easing,
-  LayoutChangeEvent,
 } from "react-native";
 import { Calendar } from "react-native-calendars";
 import { TapGestureHandler } from "react-native-gesture-handler";
@@ -186,13 +186,19 @@ export default function StoriesArchive() {
       const originalUri = result.assets?.[0]?.uri;
       if (originalUri) {
         try {
-          const stableUri = await saveImageToAppStorage(originalUri, selectedDate);
+          const stableUri = await saveImageToAppStorage(
+            originalUri,
+            selectedDate
+          );
           const next = { ...images, [selectedDate]: stableUri };
           setImages(next);
           await AsyncStorage.setItem("dateImages", JSON.stringify(next));
         } catch (e) {
           console.warn("Failed to save image to app storage:", e);
-          Alert.alert("Save failed", "Couldn’t persist the photo. Please try again.");
+          Alert.alert(
+            "Save failed",
+            "Couldn’t persist the photo. Please try again."
+          );
         }
       }
     }
@@ -288,10 +294,22 @@ export default function StoriesArchive() {
     inputRange: [0, 1],
     outputRange: [contentWidth, 0],
   });
-  const fadeOut = anim.interpolate({ inputRange: [0, 1], outputRange: [1, 0.95] });
-  const fadeIn = anim.interpolate({ inputRange: [0, 1], outputRange: [0.95, 1] });
-  const scaleOut = anim.interpolate({ inputRange: [0, 1], outputRange: [1, 0.98] });
-  const scaleIn = anim.interpolate({ inputRange: [0, 1], outputRange: [1.02, 1] });
+  const fadeOut = anim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1, 0.95],
+  });
+  const fadeIn = anim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.95, 1],
+  });
+  const scaleOut = anim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1, 0.98],
+  });
+  const scaleIn = anim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1.02, 1],
+  });
 
   // 🔹 Camera "pop & slide down" when going Home → Profile (and back up on Profile → Home)
   const camTranslateY = anim.interpolate({
@@ -310,7 +328,10 @@ export default function StoriesArchive() {
   const isTabView = currentScreen === "home" || currentScreen === "profile";
 
   return (
-    <View style={[styles.container, { backgroundColor: bgColor }]} onLayout={onContentLayout}>
+    <View
+      style={[styles.container, { backgroundColor: bgColor }]}
+      onLayout={onContentLayout}
+    >
       {/* -------- Animated Tab Area (Home/Profile) -------- */}
       {isTabView && (
         <View style={{ flex: 1 }}>
@@ -339,7 +360,10 @@ export default function StoriesArchive() {
                     style={styles.calendarCard}
                     onDayPress={(d) => {
                       if (isFuture(d.dateString)) {
-                        Alert.alert("Future day", "You can’t select future dates.");
+                        Alert.alert(
+                          "Future day",
+                          "You can’t select future dates."
+                        );
                         return;
                       }
                       setSelectedDate(d.dateString);
@@ -380,7 +404,9 @@ export default function StoriesArchive() {
                     >
                       <View
                         style={styles.preview}
-                        onLayout={(ev) => setPreviewWidth(ev.nativeEvent.layout.width)}
+                        onLayout={(ev) =>
+                          setPreviewWidth(ev.nativeEvent.layout.width)
+                        }
                       >
                         {images[selectedDate] ? (
                           <SwipeableImage
@@ -405,7 +431,9 @@ export default function StoriesArchive() {
                               );
                               if (uri && uri.startsWith(APP_DIR)) {
                                 try {
-                                  await FileSystem.deleteAsync(uri, { idempotent: true });
+                                  await FileSystem.deleteAsync(uri, {
+                                    idempotent: true,
+                                  });
                                 } catch {}
                               }
                             }}
@@ -414,7 +442,13 @@ export default function StoriesArchive() {
                           <Text style={styles.nothing}>Nothing here !</Text>
                         )}
                         {!canEdit && (
-                          <Text style={{ marginTop: 10, fontSize: 10, color: "#666" }}>
+                          <Text
+                            style={{
+                              marginTop: 10,
+                              fontSize: 10,
+                              color: "#666",
+                            }}
+                          >
                             {isSelectedFuture
                               ? "Future dates are not editable."
                               : "That day’s ancient history! Just for viewing now 👀"}
@@ -473,7 +507,7 @@ export default function StoriesArchive() {
           accessibilityLabel="Home"
         >
           <Ionicons
-            name={(activeTab === "home" && isTabView) ? "home" : "home-outline"}
+            name={activeTab === "home" && isTabView ? "home" : "home-outline"}
             size={26}
           />
         </Pressable>
@@ -484,7 +518,11 @@ export default function StoriesArchive() {
           accessibilityLabel="Profile"
         >
           <Ionicons
-            name={(activeTab === "profile" && isTabView) ? "person-circle" : "person-circle-outline"}
+            name={
+              activeTab === "profile" && isTabView
+                ? "person-circle"
+                : "person-circle-outline"
+            }
             size={26}
           />
         </Pressable>
@@ -500,7 +538,9 @@ export default function StoriesArchive() {
               opacity: camOpacity,
             },
           ]}
-          pointerEvents={activeTab === "home" && !isTabTransitioning ? "auto" : "none"}
+          pointerEvents={
+            activeTab === "home" && !isTabTransitioning ? "auto" : "none"
+          }
         >
           <Pressable
             style={[styles.cameraButton, !canEdit && { opacity: 0.4 }]}
@@ -526,7 +566,7 @@ export default function StoriesArchive() {
             <Ionicons name="close" size={28} color="#fff" />
           </Pressable>
 
-        {modalUri ? (
+          {modalUri ? (
             <Image
               source={{ uri: modalUri }}
               style={styles.modalImage}
@@ -642,7 +682,8 @@ const styles = StyleSheet.create({
     marginBottom: 80,
     alignItems: "center",
     height: 100,
-    fontSize: 20,
+    fontSize: 30,
+    fontFamily: "CaveatBrushRegular",
   },
   calendarWrapper: {
     borderRadius: 16,
