@@ -5,7 +5,7 @@ import React from "react";
 import { Text, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import styles from "../styles/LayoutStyles";
+import styles from "./styles/LayoutStyles";
 
 function MyHeader() {
   const insets = useSafeAreaInsets();

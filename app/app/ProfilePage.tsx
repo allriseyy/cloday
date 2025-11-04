@@ -16,7 +16,7 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
-import styles from "../styles/ProfilePageStyles";
+import styles from "./styles/ProfilePageStyles";
 
 type Props = {
   onOpenManual: () => void;

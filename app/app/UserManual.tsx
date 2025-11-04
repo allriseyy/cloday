@@ -1,8 +1,8 @@
 // UserManual.tsx
-import React from "react";
-import { View, Text, ScrollView, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import styles from "../styles/UserManualStyles";
+import React from "react";
+import { Pressable, ScrollView, Text, View } from "react-native";
+import styles from "./styles/UserManualStyles";
 
 type Props = {
   onBack: () => void;

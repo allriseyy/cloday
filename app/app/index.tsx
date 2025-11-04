@@ -23,7 +23,7 @@ import ProfilePage from "./ProfilePage";
 import Settings from "./Settings";
 import SwipeableImage from "./SwipeableImage";
 import UserManual from "./UserManual";
-import styles from "../styles/indexStyles";
+import styles from "./styles/indexStyles";
 
 type ImageMap = Record<string, string>;
 type Screen = "home" | "profile" | "manual" | "settings";

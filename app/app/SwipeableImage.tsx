@@ -2,7 +2,7 @@ import * as MediaLibrary from "expo-media-library";
 import React from "react";
 import { Alert, Image, Pressable, Text, View } from "react-native";
 import { Swipeable } from "react-native-gesture-handler";
-import styles from "../styles/SwipeableImageStyles";
+import styles from "./styles/SwipeableImageStyles";
 
 type Props = {
   uri: string;

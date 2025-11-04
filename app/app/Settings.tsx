@@ -1,7 +1,7 @@
-import React from "react";
-import { View, Text, Pressable, Linking } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import styles from "../styles/SettingsStyles";
+import React from "react";
+import { Linking, Pressable, Text, View } from "react-native";
+import styles from "./styles/SettingsStyles";
 
 type Props = {
   bgColor: string;
