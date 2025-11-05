@@ -22,7 +22,7 @@ import { TapGestureHandler } from "react-native-gesture-handler";
 import ProfilePage from "./ProfilePage";
 import Settings from "./Settings";
 import SwipeableImage from "./SwipeableImage";
-import UserManual from "./UserManual";
+import UserManual from "./screens/UserManual";
 import styles from "./styles/indexStyles";
 
 type ImageMap = Record<string, string>;

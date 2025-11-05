@@ -53,4 +53,10 @@ export default StyleSheet.create({
   bold: {
     fontWeight: "700",
   },
+  rootView: {
+    flex: 1,
+  },
+  fontItalic: {
+    fontStyle: "italic",
+  },
 });
