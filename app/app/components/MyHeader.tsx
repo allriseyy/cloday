@@ -1,3 +1,4 @@
+import { useFonts } from "expo-font";
 import React from "react";
 import { Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -5,6 +6,13 @@ import styles from "../styles/MyHeaderStyles";
 
 export default function MyHeader() {
   const insets = useSafeAreaInsets();
+  const [fontsLoaded] = useFonts({
+    CaveatBrushRegular: require("../../assets/fonts/CaveatBrush-Regular.ttf"),
+  });
+
+  if (!fontsLoaded) {
+    return null; // or <AppLoading />
+  }
 
   return (
     <View
